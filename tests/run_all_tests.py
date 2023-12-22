@@ -9,7 +9,6 @@ def suite():
 
     suite.addTests(loader.loadTestsFromTestCase(TestStandardUser))
     suite.addTests(loader.loadTestsFromTestCase(TestAdminUser))
-    # Add other test classes to the suite using the loader
 
     return suite
 
