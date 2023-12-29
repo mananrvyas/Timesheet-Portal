@@ -1,7 +1,4 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+import gradio as gr
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///timesheet.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+
+
