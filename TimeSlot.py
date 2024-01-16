@@ -1,5 +1,6 @@
 from datetime import datetime
-from PayPeriod import PayPeriod
+# from PayPeriod import PayPeriod
+import json
 
 
 class TimeSlot:
@@ -39,6 +40,16 @@ class TimeSlot:
     def get_end(self):
         return self._end
 
+    def serialize(self):
+        return {
+            'date': self._date.strftime('%m/%d/%y'),
+            'start': self._start.strftime('%H:%M'),
+            'end': self._end.strftime('%H:%M'),
+        }
+
+    @staticmethod
+    def deserialize(timeslot):
+        return TimeSlot(timeslot['date'], timeslot['start'], timeslot['end'])
 
 # test_slot = TimeSlot('12/3/23', '10:00', '9:00')
 # test_slot_2 = TimeSlot('12/3/23', '12:00', '14:00')

@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from TimeSlot import TimeSlot
 
 
 class PayPeriod:
@@ -15,10 +16,6 @@ class PayPeriod:
     def contains(self, date):
         date = datetime.strptime(date, '%m/%d/%y')
         return self._start <= date <= self._end
-
-    def __repr__(self):
-        # start, end, timesheet
-        return f"{self._start.strftime('%m/%d/%y')}, {self._end.strftime('%m/%d/%y')}, {self._timesheet}"
 
     def add_timeslot(self, timeslot):
         date = timeslot.get_date()
@@ -58,3 +55,38 @@ class PayPeriod:
 
     def reject(self):
         self.is_approved = "rejected"
+
+    def __repr__(self):
+        # start, end, timesheet
+        return f"{self._start.strftime('%m/%d/%y')}"
+
+    def get_pay_period_and_timesheet(self):
+        return {'pay_period': self._start.strftime('%m/%d/%y'), 'timesheet': self._timesheet}
+
+    def serialize(self):
+        return {
+            'start': self._start.strftime('%m/%d/%y'),
+            'timesheet': {date: [slot.serialize() for slot in slots] for date, slots in self._timesheet.items()},
+            'is_approved': self.is_approved,
+        }
+
+    @staticmethod
+    def deserialize(pay_period):
+        return PayPeriod(pay_period['start'], {date: [TimeSlot.deserialize(slot) for slot in slots] for date, slots in pay_period['timesheet'].items()})
+
+
+first_pay_period = PayPeriod('01/01/23')
+custom_timeslots = [
+    TimeSlot('01/02/23', '10:00', '15:00'),
+    TimeSlot('01/03/23', '10:00', '15:00'),
+    TimeSlot('01/04/23', '10:00', '15:00'),
+]
+for i in custom_timeslots:
+    first_pay_period.add_timeslot(i)
+
+# zz = first_pay_period.serialize()
+# print(zz)
+# print(first_pay_period.get_timesheet_by_pay_period())
+#
+# new_zz = PayPeriod.deserialize(zz)
+# print(new_zz.get_timesheet_by_pay_period())
