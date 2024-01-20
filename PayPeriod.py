@@ -75,14 +75,14 @@ class PayPeriod:
         return PayPeriod(pay_period['start'], {date: [TimeSlot.deserialize(slot) for slot in slots] for date, slots in pay_period['timesheet'].items()})
 
 
-first_pay_period = PayPeriod('01/01/23')
-custom_timeslots = [
-    TimeSlot('01/02/23', '10:00', '15:00'),
-    TimeSlot('01/03/23', '10:00', '15:00'),
-    TimeSlot('01/04/23', '10:00', '15:00'),
-]
-for i in custom_timeslots:
-    first_pay_period.add_timeslot(i)
+# first_pay_period = PayPeriod('01/01/23')
+# custom_timeslots = [
+#     TimeSlot('01/02/23', '10:00', '15:00'),
+#     TimeSlot('01/03/23', '10:00', '15:00'),
+#     TimeSlot('01/04/23', '10:00', '15:00'),
+# ]
+# for i in custom_timeslots:
+#     first_pay_period.add_timeslot(i)
 
 # zz = first_pay_period.serialize()
 # print(zz)

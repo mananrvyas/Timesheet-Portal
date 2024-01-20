@@ -110,7 +110,7 @@ class StandardUser:
 
         return StandardUser(user['username'], user['password'], user['role'], user['organization'],
                             deserialized_schedule, deserialized_timesheets)
-
+#
 default_schedule = {
         'Sunday': [],
         'Monday': [TimeSlot('01/03/23', '09:00', '12:00'), TimeSlot('01/03/23', '12:00', '17:00')],
@@ -121,28 +121,70 @@ default_schedule = {
         'Saturday': []
     }
 
-user = StandardUser('johndoe', 'password123', 'employee', 'company', default_schedule)
-first_pay_period = PayPeriod('01/01/23')
-user.submit_default_schedule(first_pay_period)
-second_pay_period = PayPeriod('01/15/23')
-custom_timeslots = [
-    TimeSlot('01/16/23', '10:00', '15:00'),
-    TimeSlot('01/17/23', '10:00', '15:00'),
-    TimeSlot('01/18/23', '10:00', '15:00'),
-]
-user.submit_timesheet(second_pay_period, custom_timeslots)
-
-print(user)
-
-new_user = user.serialize()
-# for i, j in new_user.items():
-#     print(i, "::: ", j)
-# print(type(new_user))
-print(StandardUser.deserialize(new_user))
-
-# all_timeshet = user.get_timesheets()
+# user = StandardUser('johndoe', 'password123', 'employee', 'company', default_schedule)
+# print(user)
+# print('------------------')
+# print(user.serialize())
 #
-# for i in all_timeshet:
-#     print(i['pay_period'])
-#     print(i['timesheet'])
+# first_pay_period = PayPeriod('01/01/23')
+#
+# user.submit_default_schedule(first_pay_period)
+# print(user)
+# print('------------------')
+# print(user.serialize())
+# second_pay_period = PayPeriod('01/15/23')
+# custom_timeslots = [
+#     TimeSlot('01/16/23', '10:00', '15:00'),
+#     TimeSlot('01/17/23', '10:00', '15:00'),
+#     TimeSlot('01/18/23', '10:00', '15:00'),
+# ]
+# user.submit_timesheet(second_pay_period, custom_timeslots)
+# print(user)
+# print('------------------')
+# print(user.serialize())
+# print('------------------')
+# print(StandardUser.deserialize(user.serialize()))
+#
+# print(user)
+#
+# new_user = user.serialize()
+# # for i, j in new_user.items():
+# #     print(i, "::: ", j)
+# # print(type(new_user))
+# print(StandardUser.deserialize(new_user))
+#
+# # all_timeshet = user.get_timesheets()
+# #
+# # for i in all_timeshet:
+# #     print(i['pay_period'])
+# #     print(i['timesheet'])
+#
+
+
+# default_schedule = {
+#         'Sunday': [],
+#         'Monday': [TimeSlot('01/03/23', '09:00', '12:00'), TimeSlot('01/03/23', '13:00', '17:00')],
+#         'Tuesday': [TimeSlot('01/04/23', '09:00', '12:00'), TimeSlot('01/04/23', '13:00', '17:00')],
+#         'Wednesday': [TimeSlot('01/05/23', '09:00', '12:00'), TimeSlot('01/05/23', '13:00', '17:00')],
+#         'Thursday': [TimeSlot('01/06/23', '09:00', '12:00'), TimeSlot('01/06/23', '13:00', '17:00')],
+#         'Friday': [TimeSlot('01/07/23', '09:00', '12:00'), TimeSlot('01/07/23', '13:00', '17:00')],
+#         'Saturday': []
+#     }
+# user = StandardUser('johndoe', 'password123', 'employee', 'company', default_schedule)
+# first_pay_period = PayPeriod('01/01/23')
+# user.submit_default_schedule(first_pay_period)
+#
+#
+# second_pay_period = PayPeriod('01/15/23')
+# custom_timeslots = [
+#     TimeSlot('01/16/23', '10:00', '15:00'),
+#     TimeSlot('01/17/23', '10:00', '15:00'),
+#     TimeSlot('01/17/23', '15:00', '16:00'),
+#     TimeSlot('01/18/23', '10:00', '15:00'),
+# ]
+# user.submit_timesheet(second_pay_period, custom_timeslots)
+
+# for i in user.get_timesheets():
+#     print(i)
+#     # print("\n\n\n")
 

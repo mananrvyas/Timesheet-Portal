@@ -1,0 +1,30 @@
+.user-container {
+    margin: 20px;
+    padding: 20px;
+    background-color: #f5f5f5;
+}
+
+h1, h2, h3 {
+    color: #333;
+}
+
+.schedule-day, section {
+    margin-bottom: 20px;
+}
+
+button {
+    background-color: #5C5CFF;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #4040ff;
+}
+
+#timesheet-display {
+    margin-top: 10px;
+}
