@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 import hashlib
 from StandardUser import StandardUser
 from TimeSlot import TimeSlot
+from datetime import datetime, timedelta
+from PayPeriod import PayPeriod
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
@@ -173,13 +175,54 @@ def add_timeslot():
         return jsonify({'success': False, 'message': 'Reached maximum timeslots for the day'})
 
 
+def parse_date(date_str):
+    # Expected format: 2024-02-10T05:00:00.000Z
+    corrected_date_str = date_str.split('T')[0]  # Extracting only the date part
+    return datetime.strptime(corrected_date_str, '%Y-%m-%d')
+
+
 @app.route('/submit_timesheet', methods=['POST'])
 def submit_timesheet():
-    # Handle timesheet submission here
+    username = session.get('username')
+    if not username:
+        flash('You must be logged in to submit a timesheet.')
+        return redirect(url_for('index'))
+
+    pay_period_selection = request.form.get('pay_period')
+    start_date = parse_date(pay_period_selection)
+
+    pay_period = PayPeriod(start_date.strftime('%m/%d/%y'))
+
+    for key in request.form:
+        if 'slot' in key and ('-start' in key or '-end' in key):
+            date_str, slot, time_type = key.split('-')
+            date_obj = datetime.strptime(date_str, '%m/%d/%Y').strftime('%m/%d/%y')
+            start_time = request.form.get(f'{date_str}-slot1-start')
+            end_time = request.form.get(f'{date_str}-slot1-end')
+            if 'slot2' in key:
+                start_time_2 = request.form.get(f'{date_str}-slot2-start')
+                end_time_2 = request.form.get(f'{date_str}-slot2-end')
+                if start_time_2 and end_time_2:
+                    timeslot_2 = TimeSlot(date_obj, start_time_2, end_time_2)
+                    pay_period.add_timeslot(timeslot_2)
+
+            if start_time and end_time:
+                timeslot = TimeSlot(date_obj, start_time, end_time)
+                pay_period.add_timeslot(timeslot)
+
+    pay_period.remove_duplicate_slots()
+    zz = pay_period.serialize()
+    print(zz)
+    flash('Timesheet submitted successfully.')
     return redirect(url_for('user_home'))
 
 
-# Run the Flask app
+def timeslot_exists(pay_period, new_timeslot):
+    for existing_slot in pay_period.get_timesheet_by_date(new_timeslot.get_date()):
+        if existing_slot.get_start() == new_timeslot.get_start() and existing_slot.get_end() == new_timeslot.get_end():
+            return True
+    return False
+
 
 if __name__ == '__main__':
     app.run(debug=True)

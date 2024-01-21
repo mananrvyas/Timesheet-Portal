@@ -123,16 +123,39 @@
         </section>
 
         <!-- Form to Submit a New Timesheet -->
+<!--        <section>-->
+<!--            <h2>Submit Timesheet for Current Pay Period</h2>-->
+<!--            <form id="timesheet-form" action="/submit_timesheet" method="post">-->
+<!--                &lt;!&ndash; Fields to input timeslot details &ndash;&gt;-->
+<!--                <input type="date" name="date" required>-->
+<!--                <input type="time" name="start_time" required>-->
+<!--                <input type="time" name="end_time" required>-->
+<!--                <button type="submit">Add Timeslot</button>-->
+<!--            </form>-->
+<!--        </section>-->
+<!--        -->
         <section>
-            <h2>Submit Timesheet for Current Pay Period</h2>
-            <form id="timesheet-form" action="/submit_timesheet" method="post">
-                <!-- Fields to input timeslot details -->
-                <input type="date" name="date" required>
-                <input type="time" name="start_time" required>
-                <input type="time" name="end_time" required>
-                <button type="submit">Add Timeslot</button>
-            </form>
-        </section>
+    <h2>Submit Timesheet</h2>
+    <button type="button" onclick="showTimesheetForm()">Submit Timesheet</button>
+    <div id="timesheet-form-container" style="display: none;">
+        <form id="timesheet-form" action="/submit_timesheet" method="post">
+            <label for="pay-period-select">Select Pay Period:</label>
+            <select id="pay-period-select" name="pay_period">
+                <!-- JavaScript will populate this -->
+            </select>
+
+            <div id="timesheet-dates-container">
+                <!-- JavaScript will populate this -->
+            </div>
+
+            <button type="submit">Submit Timesheet</button>
+        </form>
+    </div>
+</section>
+<script src="../static/js/timesheet_scripts.js"></script>
+
+
+
 
         <!-- Section to View Past Timesheets -->
         <section>
@@ -150,6 +173,6 @@
         </section>
     </div>
 
-    <script src="static/js/user_scripts.js"></script>
+    <script src="../static/js/user_scripts.js"></script>
 </body>
 </html>

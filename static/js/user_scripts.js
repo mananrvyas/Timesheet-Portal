@@ -21,6 +21,7 @@ function deleteTimeslot(day, slotIndex) {
         console.error('Error:', error);
     });
 }
+
 function addTimeslot(day) {
     const timeslotContainer = document.getElementById(day.toLowerCase() + '-timeslots');
     const timeslotCount = timeslotContainer.children.length;
