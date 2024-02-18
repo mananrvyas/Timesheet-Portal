@@ -1,4 +1,3 @@
-flask
-Flask-SQLAlchemy
-gradio
- psycopg2-binary
+psycopg2-binary
+numpy~=1.26.2
+streamlit
