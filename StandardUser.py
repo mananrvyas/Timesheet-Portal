@@ -75,6 +75,17 @@ class StandardUser:
                 f"Timesheets: {self.timesheets}\n")
         return repr
 
+    def serialize_schedule(self):
+        serialized_schedule = {day: [slot.serialize() for slot in slots]
+                               for day, slots in self.default_schedule.items()}
+        return serialized_schedule
+
+    @staticmethod
+    def deserialize_schedule(schedule):
+        deserialized_schedule = {day: [TimeSlot.deserialize(slot) for slot in slots]
+                                 for day, slots in schedule.items()}
+        return deserialized_schedule
+
     def serialize(self):
         serialized_schedule = {day: [slot.serialize() for slot in slots]
                                for day, slots in self.default_schedule.items()}
@@ -171,6 +182,10 @@ default_schedule = {
 #         'Saturday': []
 #     }
 # user = StandardUser('johndoe', 'password123', 'employee', 'company', default_schedule)
+#
+# zz = user.serialize_schedule()
+#
+# print(zz)
 # first_pay_period = PayPeriod('01/01/23')
 # user.submit_default_schedule(first_pay_period)
 #
