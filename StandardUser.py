@@ -5,13 +5,14 @@ import hashlib
 
 
 class StandardUser:
-    def __init__(self, username, password, role, organization, default_schedule=None, timesheets=[]):
+    def __init__(self, username, password, role, organization, email_address, default_schedule=None, timesheets=[]):
         self.username = username
         self.password = password
         self.role = role
         self.default_schedule = default_schedule if default_schedule else {}
         self.timesheets = timesheets
         self.organization = organization
+        self.email_address = email_address
         # hourly wage (optional) # we can show their total earnings for the pay period
 
     def set_password(self, password):
@@ -103,7 +104,8 @@ class StandardUser:
             'role': self.role,
             'organization': self.organization,
             'default_schedule': serialized_schedule,
-            'timesheets': serialized_timesheets
+            'timesheets': serialized_timesheets,
+            'email_address': self.email_address
         }
 
     @staticmethod
@@ -119,7 +121,7 @@ class StandardUser:
                 'timesheet': {date: [TimeSlot.deserialize(slot) for slot in slots] for date, slots in timesheet['timesheet'].items()}
             })
 
-        return StandardUser(user['username'], user['password'], user['role'], user['organization'],
+        return StandardUser(user['username'], user['password'], user['role'], user['organization'], user['email_address'],
                             deserialized_schedule, deserialized_timesheets)
 #
 default_schedule = {

@@ -13,7 +13,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import requests
+import os
 
+
+MAILGUN_API_KEY = os.getenv('MAILGUN_API_KEY')
+
+
+st.set_page_config(page_title="Timesheet Portal")
 
 if 'DEFAULT_SCHEDULE' not in st.session_state:
     st.session_state.DEFAULT_SCHEDULE = {
@@ -38,6 +45,31 @@ if 'current_page' not in st.session_state:
 
 
 def login_page():
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("Home"):
+            st.session_state.current_page = 'login'
+            st.rerun()
+
+    with col2:
+        if st.button("Dashboard"):
+            if 'user_info' not in st.session_state:
+                st.error("You must be logged in to access the dashboard.")
+                time.sleep(1)
+                st.rerun()
+            elif st.session_state.user_info['role'] == 'admin':
+                st.session_state.current_page = 'admin_dashboard'
+                st.rerun()
+            else:
+                st.session_state.current_page = 'dashboard'
+                st.rerun()
+
+    with col3:
+        if st.button("About"):
+            st.session_state.current_page = 'about'
+            st.rerun()
+
     st.title("Sign In")
     st.subheader("Sign in to the Timesheet Portal")
 
@@ -91,7 +123,6 @@ def create_timesheet_data():
 
 
 def plot_timesheet_bar_chart(df):
-
     plt.style.use('dark_background')
     status_colors = {'Approved': 'green', 'Rejected': 'red', 'Submitted': 'blue'}
     colors = df['Status'].map(status_colors)
@@ -128,11 +159,14 @@ def dashboard_page():
         st.write(f"Name: Manan Vyas")
         st.write(f"Email: vyasmana@msu.edu")
         st.write(f"Phone: (517) 980-1536")
-        st.write(f"Town: Yo Momma")
+        st.write(f"Town: East Lansing")
 
     with col2:
         st.header("Timesheets")
-        st.button("See All Timesheets")
+        if st.button("See All Timesheets"):
+            st.session_state.current_page = 'all_timesheets'
+            st.rerun()
+
         timesheet_df = create_timesheet_data()
         timesheet_chart = plot_timesheet_bar_chart(timesheet_df)
         st.pyplot(timesheet_chart)
@@ -145,6 +179,12 @@ def dashboard_page():
         """, unsafe_allow_html=True)
 
 
+def all_timesheets_page():
+    st.title("All Timesheets")
+
+    # show all the timesheets for the user
+
+
 def signup_page():
     st.title("Signup Page")
     username = st.text_input("Choose a Username")
@@ -154,10 +194,24 @@ def signup_page():
     hashed_pwd = hashlib.sha256(password.encode()).hexdigest()
 
     if st.button("Create Account"):
-        st.session_state.USERS.append([username, hashed_pwd, role, organization])
-        st.success("Account Created Successfully!")
-        st.session_state.current_page = 'login'
-        st.rerun()
+        if any(user[0] == username for user in st.session_state.USERS):
+            st.error("Username already exists.")
+        elif password == '':
+            st.error("Password cannot be empty.")
+        elif len(password) < 8:
+            st.error("Password must be at least 8 characters long.")
+        elif username == '':
+            st.error("Username cannot be empty.")
+        elif len(username) < 3:
+            st.error("Username must be at least 3 characters long.")
+        else:
+            st.session_state.USERS.append([username, hashed_pwd, role, organization])
+            st.success("Account Created Successfully!")
+            time.sleep(1.5)
+            st.success("Redirecting to login page...")
+            time.sleep(1)
+            st.session_state.current_page = 'login'
+            st.rerun()
 
 
 def forgot_password_page():
@@ -177,7 +231,9 @@ def forgot_password_page():
             st.session_state.otp = random.randint(1000, 9999)
             print(st.session_state.otp)
             st.session_state.otp_sent = True
+            send_otp(username, st.session_state.otp, email)
             st.write(f"An OTP has been sent to your email address: {st.session_state.otp}")  # For testing only
+            time.sleep(1)
             st.rerun()
 
     if st.session_state.otp_sent:
@@ -216,6 +272,26 @@ def forgot_password_page():
                 st.error("Invalid OTP")
 
 
+def send_otp(user, otp, mail):
+    senders_name = 'Manan Vyas'
+    senders_email = 'timesheet@mananvyas.in'
+    receivers_email = mail
+    subject = 'One Time Password (OTP) for Password Reset'
+    content = (f'Hi {user}, \n\n'
+               f'A request to reset your password has been made. Your verification code is: {otp}\n\n\n'
+               f'If you did not request this, please ignore this email.\n\n\n'
+               f'Thanks,\n'
+               f'Your Friendly Neighborhood Spider-man')
+
+    requests.post(
+            "https://api.mailgun.net/v3/mananvyas.in/messages",
+            auth=("api", MAILGUN_API_KEY),
+            data={"from": f"{senders_name} <{senders_email}>",
+                  "to": [f"{receivers_email}"],
+                  "subject": f"{subject}",
+                  "text": f"{content}"})
+
+
 if st.session_state.current_page == 'login':
     login_page()
 elif st.session_state.current_page == 'signup':
@@ -226,3 +302,5 @@ elif st.session_state.current_page == 'admin_dashboard':
     admin_dashboard_page()
 elif st.session_state.current_page == 'forgot_password':
     forgot_password_page()
+elif st.session_state.current_page == 'all_timesheets':
+    all_timesheets_page()
