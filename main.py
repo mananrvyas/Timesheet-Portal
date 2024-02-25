@@ -6,7 +6,6 @@ from PayPeriod import PayPeriod
 # from datetime import timedelta
 import gradio as gr
 import datetime
-import time
 import streamlit as st
 import random
 import pandas as pd
@@ -16,6 +15,7 @@ import matplotlib.dates as mdates
 import requests
 import os
 from dotenv import load_dotenv
+import time
 
 load_dotenv()
 MAILGUN_API_KEY = os.getenv('MAILGUN_API_KEY')
@@ -205,7 +205,7 @@ def all_timesheets_page():
     # show all the timesheets for the user
 
     def get_week_range(date):
-        start = date - datetime.timedelta(days=date.weekday())
+        start = date - datetime.timedelta(days=date.weekday() + 1)
         end = start + datetime.timedelta(days=6)
         return start, end
 
@@ -225,13 +225,19 @@ def all_timesheets_page():
     with col3:
         if st.button('\>>'):
             st.session_state.current_week += datetime.timedelta(days=7)
+
             st.rerun()
 
-    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    st.write("Please enter your timesheet for the week. Enter the times in 24-hour format (HH\:MM). "
+             "If you did not work on a particular day, leave the fields empty.")
+
+    st.write("For example, if you worked from 9:00 AM to 5:00 PM, enter 09:00 in From 17:00 in Till")
+
+    days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
     for day in days:
         if day not in st.session_state:
-            st.session_state[day] = {"from": "", "till": ""}
+            st.session_state[day] = {}
 
     for i, day in enumerate(days):
         col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1, 1, 1, 1, 1, 1])
@@ -239,26 +245,64 @@ def all_timesheets_page():
             st.write("")
             st.write("")
             st.write(day)
+
         with col2:
             st.write("")
             st.write("")
             date = week_start + datetime.timedelta(days=i)
             st.write(date.strftime('%d %b'))
+
         with col3:
-            st.session_state[day]["from"] = st.text_input(f"From", key=f"{day}_from_1")
+            st.session_state[day][f"{day}_from_1"] = st.text_input(f"From", key=f"{day}_from_1")
+            if len(st.session_state[day][f"{day}_from_1"]) != 5 and st.session_state[day][f"{day}_from_1"] != '':
+                st.error("Invalid format.")
+            elif ':' not in st.session_state[day][f"{day}_from_1"] and st.session_state[day][f"{day}_from_1"] != '':
+                st.error("Invalid format.")
+
         with col4:
-            st.session_state[day]["till"] = st.text_input(f"Till", key=f"{day}_till_1")
+            st.session_state[day][f"{day}_till_1"] = st.text_input(f"Till", key=f"{day}_till_1")
+            if len(st.session_state[day][f"{day}_till_1"]) != 5 and st.session_state[day][f"{day}_till_1"] != '':
+                st.error("Invalid format.")
+            elif ':' not in st.session_state[day][f"{day}_till_1"] and st.session_state[day][f"{day}_till_1"] != '':
+                st.error("Invalid format.")
+
         with col5:
-            st.session_state[day]["from"] = st.text_input(f"From", key=f"{day}_from_2")
+            st.session_state[day][f"{day}_from_2"] = st.text_input(f"From", key=f"{day}_from_2")
+            if len(st.session_state[day][f"{day}_from_2"]) != 5 and st.session_state[day][f"{day}_from_2"] != '':
+                st.error("Invalid format.")
+            elif ':' not in st.session_state[day][f"{day}_from_2"] and st.session_state[day][f"{day}_from_2"] != '':
+                st.error("Invalid format.")
+
         with col6:
-            st.session_state[day]["till"] = st.text_input(f"Till", key=f"{day}_till_2")
+            st.session_state[day][f"{day}_till_2"] = st.text_input(f"Till", key=f"{day}_till_2")
+            if len(st.session_state[day][f"{day}_till_2"]) != 5 and st.session_state[day][f"{day}_till_2"] != '':
+                st.error("Invalid format.")
+            elif ':' not in st.session_state[day][f"{day}_till_2"] and st.session_state[day][f"{day}_till_2"] != '':
+                st.error("Invalid format.")
+
         with col7:
             st.write("")
             st.write("")
             st.write("0.00")
 
+    # validate the timesheet
+    for day in days:
+        if st.session_state[day][f"{day}_from_1"] != '' and st.session_state[day][f"{day}_till_1"] != '':
+            if st.session_state[day][f"{day}_from_1"] > st.session_state[day][f"{day}_till_1"]:
+                st.error(f"Invalid times for {day}. Start time must be before end time.")
+        if st.session_state[day][f"{day}_from_2"] != '' and st.session_state[day][f"{day}_till_2"] != '':
+            if st.session_state[day][f"{day}_from_2"] > st.session_state[day][f"{day}_till_2"]:
+                st.error(f"Invalid times for {day}. Start time must be before end time.")
+
+    # when user clicks submit, print the timesheet
     if st.button("Submit"):
-        pass
+        st.balloons()
+        st.snow()
+        time.sleep(2)
+        st.success("Timesheet submitted successfully!")
+        for day in days:
+            print(day, '\n', st.session_state[day][f"{day}_from_1"], ' to ', st.session_state[day][f"{day}_till_1"],
+                  '\n', st.session_state[day][f"{day}_from_2"], ' to ', st.session_state[day][f"{day}_till_2"])
 
 
 def signup_page():
@@ -414,4 +458,4 @@ elif st.session_state.current_page == 'forgot_password':
 elif st.session_state.current_page == 'all_timesheets':
     all_timesheets_page()
 
-print(st.session_state.page_history)
+# print(st.session_state.page_history)
