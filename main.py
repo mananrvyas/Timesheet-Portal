@@ -20,6 +20,8 @@ from dotenv import load_dotenv
 load_dotenv()
 MAILGUN_API_KEY = os.getenv('MAILGUN_API_KEY')
 
+ADMIN_PIN = os.getenv('ADMIN_PIN')
+
 st.set_page_config(page_title="Timesheet Portal")
 
 if 'DEFAULT_SCHEDULE' not in st.session_state:
@@ -39,7 +41,6 @@ if 'USERS' not in st.session_state:
                      , st.session_state.DEFAULT_SCHEDULE),
         StandardUser('Manan', hashlib.sha256('Manan'.encode()).hexdigest(), 'user', 'MSU', 'vyasmana@msu.edu',
                      st.session_state.DEFAULT_SCHEDULE)]
-
 
 if 'current_page' not in st.session_state:
     st.session_state.current_page = 'login'
@@ -199,24 +200,90 @@ def dashboard_page():
 
 
 def all_timesheets_page():
-    st.title("All Timesheets")
+    st.title("Submit a Timesheets")
 
     # show all the timesheets for the user
+
+    def get_week_range(date):
+        start = date - datetime.timedelta(days=date.weekday())
+        end = start + datetime.timedelta(days=6)
+        return start, end
+
+    if 'current_week' not in st.session_state:
+        st.session_state.current_week = datetime.date.today()
+
+    week_start, week_end = get_week_range(st.session_state.current_week)
+
+    col1, col2, col3 = st.columns([1, 5, 1])
+    with col1:
+        if st.button('<<'):
+            st.session_state.current_week -= datetime.timedelta(days=7)
+            st.rerun()
+    with col2:
+        st.write(f"Timesheet for week: {week_start.strftime('%A %d %b %Y')} - {week_end.strftime('%A %d %b %Y')}")
+
+    with col3:
+        if st.button('\>>'):
+            st.session_state.current_week += datetime.timedelta(days=7)
+            st.rerun()
+
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+    for day in days:
+        if day not in st.session_state:
+            st.session_state[day] = {"from": "", "till": ""}
+
+    for i, day in enumerate(days):
+        col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1, 1, 1, 1, 1, 1])
+        with col1:
+            st.write("")
+            st.write("")
+            st.write(day)
+        with col2:
+            st.write("")
+            st.write("")
+            date = week_start + datetime.timedelta(days=i)
+            st.write(date.strftime('%d %b'))
+        with col3:
+            st.session_state[day]["from"] = st.text_input(f"From", key=f"{day}_from_1")
+        with col4:
+            st.session_state[day]["till"] = st.text_input(f"Till", key=f"{day}_till_1")
+        with col5:
+            st.session_state[day]["from"] = st.text_input(f"From", key=f"{day}_from_2")
+        with col6:
+            st.session_state[day]["till"] = st.text_input(f"Till", key=f"{day}_till_2")
+        with col7:
+            st.write("")
+            st.write("")
+            st.write("0.00")
+
+    if st.button("Submit"):
+        pass
 
 
 def signup_page():
     st.title("Signup Page")
     username = st.text_input("Choose a Username")
     password = st.text_input("Choose a Password", type='password')
-    role = st.selectbox("Role", ['admin', 'user'])
+    role = st.selectbox("Role", ['user', 'admin'])
+    if role == 'admin':
+        admin_pin = st.text_input("Admin PIN", type='password')
+        if admin_pin != ADMIN_PIN and admin_pin != '':
+            st.error("Invalid Admin PIN")
+            return
     email = st.text_input("Email Address")
     organization = st.text_input("Organization")
+
+    for i in st.session_state.USERS:
+        if i.username == username:
+            st.error("Username already exists.")
 
     if st.button("Create Account"):
         st.session_state.page_history.append(st.session_state.current_page)
         for i in st.session_state.USERS:
             if i.username == username:
                 st.error("Username already exists.")
+                return
         if password == '':
             st.error("Password cannot be empty.")
         elif len(password) < 8:
@@ -226,7 +293,8 @@ def signup_page():
         elif len(username) < 3:
             st.error("Username must be at least 3 characters long.")
         else:
-            st.session_state.USERS.append(StandardUser(username, password, role, organization, email, st.session_state.DEFAULT_SCHEDULE))
+            st.session_state.USERS.append(
+                StandardUser(username, password, role, organization, email, st.session_state.DEFAULT_SCHEDULE))
             st.success("Account Created Successfully!")
             time.sleep(1.5)
             st.success("Redirecting to login page...")
