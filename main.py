@@ -15,10 +15,10 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import requests
 import os
+from dotenv import load_dotenv
 
-
+load_dotenv()
 MAILGUN_API_KEY = os.getenv('MAILGUN_API_KEY')
-
 
 st.set_page_config(page_title="Timesheet Portal")
 
@@ -35,40 +35,45 @@ if 'DEFAULT_SCHEDULE' not in st.session_state:
 
 if 'USERS' not in st.session_state:
     st.session_state.USERS = [
-        ['user1', hashlib.sha256('password1'.encode()).hexdigest(), 'admin', 'org1', []],
-        ['user2', hashlib.sha256('password2'.encode()).hexdigest(), 'user', 'org2', []],
-        ['Manan', hashlib.sha256('Manan'.encode()).hexdigest(), 'user', 'org3', []]
-    ]
+        StandardUser('admin', hashlib.sha256('admin'.encode()).hexdigest(), 'admin', 'MSU', 'admin@msu.edu'
+                     , st.session_state.DEFAULT_SCHEDULE),
+        StandardUser('Manan', hashlib.sha256('Manan'.encode()).hexdigest(), 'user', 'MSU', 'vyasmana@msu.edu',
+                     st.session_state.DEFAULT_SCHEDULE)]
+
 
 if 'current_page' not in st.session_state:
     st.session_state.current_page = 'login'
 
+# A list to keep track of the page history
+if 'page_history' not in st.session_state:
+    st.session_state.page_history = []
+
 
 def login_page():
-    col1, col2, col3 = st.columns(3)
+    # col1, col2, col3 = st.columns(3)
 
-    with col1:
-        if st.button("Home"):
-            st.session_state.current_page = 'login'
-            st.rerun()
-
-    with col2:
-        if st.button("Dashboard"):
-            if 'user_info' not in st.session_state:
-                st.error("You must be logged in to access the dashboard.")
-                time.sleep(1)
-                st.rerun()
-            elif st.session_state.user_info['role'] == 'admin':
-                st.session_state.current_page = 'admin_dashboard'
-                st.rerun()
-            else:
-                st.session_state.current_page = 'dashboard'
-                st.rerun()
-
-    with col3:
-        if st.button("About"):
-            st.session_state.current_page = 'about'
-            st.rerun()
+    # with col1:
+    #     if st.button("Home"):
+    #         st.session_state.current_page = 'login'
+    #         st.rerun()
+    #
+    # with col2:
+    #     if st.button("Dashboard"):
+    #         if 'user_info' not in st.session_state:
+    #             st.error("You must be logged in to access the dashboard.")
+    #             time.sleep(1)
+    #             st.rerun()
+    #         elif st.session_state.user_info['role'] == 'admin':
+    #             st.session_state.current_page = 'admin_dashboard'
+    #             st.rerun()
+    #         else:
+    #             st.session_state.current_page = 'dashboard'
+    #             st.rerun()
+    #
+    # with col3:
+    #     if st.button("About"):
+    #         st.session_state.current_page = 'about'
+    #         st.rerun()
 
     st.title("Sign In")
     st.subheader("Sign in to the Timesheet Portal")
@@ -81,12 +86,19 @@ def login_page():
     if st.button("Sign In"):
         hashed_pwd = hashlib.sha256(password.encode()).hexdigest()
         # Authenticate user
-        user = next((user for user in st.session_state.USERS if user[0] == username and user[1] == hashed_pwd), None)
+        user = None
+        for i in st.session_state.USERS:
+            if i.username == username and i.password == hashed_pwd:
+                user = i
+                break
+
         if user:
-            st.session_state.user_info = {'username': user[0], 'role': user[2]}  # Save user info
-            if user[2] == 'admin':
+            st.session_state.user_info = {'username': user.username, 'role': user.role}  # Save user info
+            if user.role == 'admin':
+                st.session_state.page_history.append(st.session_state.current_page)
                 st.session_state.current_page = 'admin_dashboard'
             else:
+                st.session_state.page_history.append(st.session_state.current_page)
                 st.session_state.current_page = 'dashboard'
             st.rerun()
         else:
@@ -94,10 +106,12 @@ def login_page():
 
     # st.write("Forgot password?")
     if st.button("Forgot password?"):
+        st.session_state.page_history.append(st.session_state.current_page)
         st.session_state.current_page = 'forgot_password'
         st.rerun()
 
     if st.button("Click here to register"):
+        st.session_state.page_history.append(st.session_state.current_page)
         st.session_state.current_page = 'signup'
         st.rerun()
 
@@ -145,11 +159,15 @@ def plot_timesheet_bar_chart(df):
 
 
 def dashboard_page():
-    user = next((user for user in st.session_state.USERS if user[0] == st.session_state.user_info['username']), None)
-    if user:
-        user = StandardUser(user[0], user[1], user[2], user[3], st.session_state.DEFAULT_SCHEDULE, user[4])
-    else:
+    st.title("Dashboard")
+    user = None
+    for i in st.session_state.USERS:
+        if i.username == st.session_state.user_info['username']:
+            user = i
+            break
+    if user is None:
         st.error("User not found. Please contact the administrator (or create an account).")
+        return
 
     col1, col2 = st.columns(2)
 
@@ -164,6 +182,7 @@ def dashboard_page():
     with col2:
         st.header("Timesheets")
         if st.button("See All Timesheets"):
+            st.session_state.page_history.append(st.session_state.current_page)
             st.session_state.current_page = 'all_timesheets'
             st.rerun()
 
@@ -190,13 +209,15 @@ def signup_page():
     username = st.text_input("Choose a Username")
     password = st.text_input("Choose a Password", type='password')
     role = st.selectbox("Role", ['admin', 'user'])
+    email = st.text_input("Email Address")
     organization = st.text_input("Organization")
-    hashed_pwd = hashlib.sha256(password.encode()).hexdigest()
 
     if st.button("Create Account"):
-        if any(user[0] == username for user in st.session_state.USERS):
-            st.error("Username already exists.")
-        elif password == '':
+        st.session_state.page_history.append(st.session_state.current_page)
+        for i in st.session_state.USERS:
+            if i.username == username:
+                st.error("Username already exists.")
+        if password == '':
             st.error("Password cannot be empty.")
         elif len(password) < 8:
             st.error("Password must be at least 8 characters long.")
@@ -205,11 +226,12 @@ def signup_page():
         elif len(username) < 3:
             st.error("Username must be at least 3 characters long.")
         else:
-            st.session_state.USERS.append([username, hashed_pwd, role, organization])
+            st.session_state.USERS.append(StandardUser(username, password, role, organization, email, st.session_state.DEFAULT_SCHEDULE))
             st.success("Account Created Successfully!")
             time.sleep(1.5)
             st.success("Redirecting to login page...")
             time.sleep(1)
+            st.session_state.page_history.append(st.session_state.current_page)
             st.session_state.current_page = 'login'
             st.rerun()
 
@@ -227,12 +249,29 @@ def forgot_password_page():
         password = st.text_input("Enter the last password you remember", type='password')
         email = st.text_input("Email address")
 
-        if st.button("Send OTP"):
+        # check if username exists or not
+        user = None
+        if username != "":
+            user = None
+            for i in st.session_state.USERS:
+                if i.username == username:
+                    user = i
+                    break
+
+            if user is None:
+                st.error("User not found. Please enter a valid username.")
+
+        if email != "" and user is not None:
+            if email != user.email_address:
+                st.error("Email address does not match the username.")
+                # return
+
+        if st.button("Send OTP") and user is not None and email == user.email_address:
             st.session_state.otp = random.randint(1000, 9999)
             print(st.session_state.otp)
             st.session_state.otp_sent = True
             send_otp(username, st.session_state.otp, email)
-            st.write(f"An OTP has been sent to your email address: {st.session_state.otp}")  # For testing only
+            st.write(f"An OTP has been sent to your email address: {st.session_state.otp}")
             time.sleep(1)
             st.rerun()
 
@@ -245,17 +284,19 @@ def forgot_password_page():
         new_password = st.text_input("Enter new password", type='password')
         confirm_password = st.text_input("Confirm new password", type='password')
 
-        if new_password != confirm_password:
+        if new_password != confirm_password and confirm_password != "":
             st.error("Passwords do not match")
 
         if st.button("Submit"):
             if otp == str(st.session_state.otp):
                 if new_password == confirm_password:
-                    hashed_pwd = hashlib.sha256(new_password.encode()).hexdigest()
-                    user_index = next(
-                        (index for index, user in enumerate(st.session_state.USERS) if user[0] == username), None)
+                    user_index = None
+                    for i in st.session_state.USERS:
+                        if i.username == username:
+                            user_index = st.session_state.USERS.index(i)
+                            break
                     if user_index is not None:
-                        st.session_state.USERS[user_index][1] = hashed_pwd
+                        st.session_state.USERS[user_index].set_password(new_password)
                         st.success("Password reset successfully!")
                         st.session_state.current_page = 'login'
                         st.session_state.otp_sent = False
@@ -284,12 +325,12 @@ def send_otp(user, otp, mail):
                f'Your Friendly Neighborhood Spider-man')
 
     requests.post(
-            "https://api.mailgun.net/v3/mananvyas.in/messages",
-            auth=("api", MAILGUN_API_KEY),
-            data={"from": f"{senders_name} <{senders_email}>",
-                  "to": [f"{receivers_email}"],
-                  "subject": f"{subject}",
-                  "text": f"{content}"})
+        "https://api.mailgun.net/v3/mananvyas.in/messages",
+        auth=("api", MAILGUN_API_KEY),
+        data={"from": f"{senders_name} <{senders_email}>",
+              "to": [f"{receivers_email}"],
+              "subject": f"{subject}",
+              "text": f"{content}"})
 
 
 if st.session_state.current_page == 'login':
@@ -304,3 +345,5 @@ elif st.session_state.current_page == 'forgot_password':
     forgot_password_page()
 elif st.session_state.current_page == 'all_timesheets':
     all_timesheets_page()
+
+print(st.session_state.page_history)
