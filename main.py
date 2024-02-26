@@ -311,37 +311,10 @@ def all_timesheets_page():
     with y:
         st.write("This will submit the timesheet with the default schedule."
                  " If you want to make changes, please do so before submitting."
-                 " There's another submit button at the bottom of the page.")
+                 " There's another submit button at the bottom of the page. Scroll down for total hours")
 
     st.write("")
     st.session_state.total_hours = 0
-
-    for day in days:
-        for slot_index in range(1, 3):
-            start_key_1 = f"{slot_index}_{day}_from_1"
-            end_key_1 = f"{slot_index}_{day}_till_1"
-            start_key_2 = f"{slot_index}_{day}_from_2"
-            end_key_2 = f"{slot_index}_{day}_till_2"
-
-            # Calculate hours for the first week
-            if start_key_1 in st.session_state[day] and end_key_1 in st.session_state[day]:
-                try:
-                    start_time = datetime.datetime.strptime(st.session_state[day][start_key_1], '%H:%M')
-                    end_time = datetime.datetime.strptime(st.session_state[day][end_key_1], '%H:%M')
-                    st.session_state.total_hours += (end_time - start_time).seconds / 3600
-                except:
-                    pass
-
-            # Repeat the calculation for the second week
-            if start_key_2 in st.session_state[day] and end_key_2 in st.session_state[day]:
-                try:
-                    start_time = datetime.datetime.strptime(st.session_state[day][start_key_2], '%H:%M')
-                    end_time = datetime.datetime.strptime(st.session_state[day][end_key_2], '%H:%M')
-                    st.session_state.total_hours += (end_time - start_time).seconds / 3600
-                except:
-                    pass
-
-    st.write(f"Total Hours: ", round(st.session_state.total_hours, 1))
 
     for day in days:
         if day not in st.session_state:
@@ -441,10 +414,14 @@ def all_timesheets_page():
             st.write("")
             st.write("")
             try:
-                total_hours = round(((end_time_1 - start_time_1).seconds / 3600), 1) + round(
-                    ((end_time_2 - start_time_2).seconds / 3600), 1)
+                total_hours = 0
+                if start_time_1 is not None and end_time_1 is not None:
+                    total_hours = round(((end_time_1 - start_time_1).seconds / 3600), 1)
+                if start_time_2 is not None and end_time_2 is not None:
+                    total_hours += round(((end_time_2 - start_time_2).seconds / 3600), 1)
+                if total_hours == 0:
+                    raise ValueError
                 st.write(total_hours)
-                st.session_state.total_hours += total_hours
             except:
                 st.write("0.00")
 
@@ -541,10 +518,14 @@ def all_timesheets_page():
             st.write("")
             st.write("")
             try:
-                total_hours = round(((end_time_1 - start_time_1).seconds / 3600), 1) + round(
-                    ((end_time_2 - start_time_2).seconds / 3600), 1)
+                total_hours = 0
+                if start_time_1 is not None and end_time_1 is not None:
+                    total_hours = round(((end_time_1 - start_time_1).seconds / 3600), 1)
+                if start_time_2 is not None and end_time_2 is not None:
+                    total_hours += round(((end_time_2 - start_time_2).seconds / 3600), 1)
+                if total_hours == 0:
+                    raise ValueError
                 st.write(total_hours)
-                st.session_state.total_hours += total_hours
             except:
                 st.write("0.00")
 
@@ -566,36 +547,41 @@ def all_timesheets_page():
     #     st.write("0.00")
 
     # when user clicks submit, print the timesheet
+
+    # calculate the total hours
+
+    pay_period = PayPeriod(week_start.strftime('%m/%d/%y'))
+
+    timeslots = []
+
+    for i, day in enumerate(days):
+        if st.session_state[day][f"1_{day}_from_1"] != '' and st.session_state[day][f"1_{day}_till_1"] != '':
+            timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i)).strftime('%m/%d/%y'),
+                                      st.session_state[day][f"1_{day}_from_1"],
+                                      st.session_state[day][f"1_{day}_till_1"]))
+        if st.session_state[day][f"1_{day}_from_2"] != '' and st.session_state[day][f"1_{day}_till_2"] != '':
+            timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i)).strftime('%m/%d/%y'),
+                                      st.session_state[day][f"1_{day}_from_2"],
+                                      st.session_state[day][f"1_{day}_till_2"]))
+        if st.session_state[day][f"2_{day}_from_1"] != '' and st.session_state[day][f"2_{day}_till_1"] != '':
+            timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i + 7)).strftime('%m/%d/%y'),
+                                      st.session_state[day][f"2_{day}_from_1"],
+                                      st.session_state[day][f"2_{day}_till_1"]))
+        if st.session_state[day][f"2_{day}_from_2"] != '' and st.session_state[day][f"2_{day}_till_2"] != '':
+            timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i + 7)).strftime('%m/%d/%y'),
+                                      st.session_state[day][f"2_{day}_from_2"],
+                                      st.session_state[day][f"2_{day}_till_2"]))
+
+    for i in timeslots:
+        pay_period.add_timeslot(i)
+
+    st.session_state.total_hours = pay_period.get_total_hours()
+
+    st.write(f"Total Hours: ", round(st.session_state.total_hours, 1))
+
     if st.button("Submit"):
 
         # Converting the timesheet to a list of TimeSlot objects with pay period
-
-        pay_period = PayPeriod(week_start.strftime('%m/%d/%y'))
-
-        timeslots = []
-
-        for i, day in enumerate(days):
-            if st.session_state[day][f"1_{day}_from_1"] != '' and st.session_state[day][f"1_{day}_till_1"] != '':
-                timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i)).strftime('%m/%d/%y'),
-                                          st.session_state[day][f"1_{day}_from_1"],
-                                          st.session_state[day][f"1_{day}_till_1"]))
-            if st.session_state[day][f"1_{day}_from_2"] != '' and st.session_state[day][f"1_{day}_till_2"] != '':
-                timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i)).strftime('%m/%d/%y'),
-                                          st.session_state[day][f"1_{day}_from_2"],
-                                          st.session_state[day][f"1_{day}_till_2"]))
-            if st.session_state[day][f"2_{day}_from_1"] != '' and st.session_state[day][f"2_{day}_till_1"] != '':
-                timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i + 7)).strftime('%m/%d/%y'),
-                                          st.session_state[day][f"2_{day}_from_1"],
-                                          st.session_state[day][f"2_{day}_till_1"]))
-            if st.session_state[day][f"2_{day}_from_2"] != '' and st.session_state[day][f"2_{day}_till_2"] != '':
-                timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i + 7)).strftime('%m/%d/%y'),
-                                          st.session_state[day][f"2_{day}_from_2"],
-                                          st.session_state[day][f"2_{day}_till_2"]))
-
-        print(pay_period)
-
-        for i in timeslots:
-            pay_period.add_timeslot(i)
 
         print(pay_period.get_timesheet_by_pay_period())
 
