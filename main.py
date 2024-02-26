@@ -23,7 +23,23 @@ MAILGUN_API_KEY = os.getenv('MAILGUN_API_KEY')
 
 ADMIN_PIN = os.getenv('ADMIN_PIN')
 
-st.set_page_config(page_title="Timesheet Portal")
+st.set_page_config(page_title="Timesheet Portal", layout="centered")
+# WHY DOES THIS NOT WORK ARGRGGDGHFJKGHKDFGHKLASDfgIOASUDFRghIOASDFG
+# st.markdown(
+#     # """
+#     # <style>
+#     # [data-testid="stVerticalBlock"] {
+#     #     width: 1000px !important;
+#     #     margin: auto !important;
+#     #     overflow: hidden !important;
+#     # }
+#     # [data-testid="stForm"] {
+#     #     width: 600px !important;
+#     #     }
+#     # </style>
+#     # """,
+#     unsafe_allow_html=True,
+# )
 
 if 'DEFAULT_SCHEDULE' not in st.session_state:
     st.session_state.DEFAULT_SCHEDULE = {
@@ -79,7 +95,7 @@ def login_page():
 
     st.title("Sign In")
     st.subheader("Sign in to the Timesheet Portal")
-    st.write("For auto filling password, go to password field, not the username field.")
+    st.write("For auto filling password, click on the password field, not the username field.")
     form = st.form(key='login_form')
 
     username = form.text_input("Username")
@@ -221,9 +237,12 @@ def all_timesheets_page():
     # show all the timesheets for the user
 
     def get_week_range(date):
-        start = date - datetime.timedelta(days=date.weekday() + 1)
-        end = start + datetime.timedelta(days=13)
-        return start, end
+        known_start_date = datetime.date(2024, 2, 11)
+        delta = date - known_start_date
+        days_since_last_period_start = delta.days % 14
+        start_date = date - datetime.timedelta(days=days_since_last_period_start)
+        end_date = start_date + datetime.timedelta(days=13)
+        return start_date, end_date
 
     if 'current_week' not in st.session_state:
         st.session_state.current_week = datetime.date.today()
@@ -233,7 +252,7 @@ def all_timesheets_page():
     col1, col2, col3 = st.columns([1, 5, 1])
     with col1:
         if st.button('<<'):
-            st.session_state.current_week -= datetime.timedelta(days=7)
+            st.session_state.current_week -= datetime.timedelta(days=14)
             st.toast("Loading...")
             time.sleep(1)
             # st.toast("Done!", icon='🎉')
@@ -243,7 +262,7 @@ def all_timesheets_page():
 
     with col3:
         if st.button('\>>'):
-            st.session_state.current_week += datetime.timedelta(days=7)
+            st.session_state.current_week += datetime.timedelta(days=14)
             st.toast("Loading...")
             time.sleep(1)
             # st.toast("Done!", icon='🎉')
@@ -252,9 +271,77 @@ def all_timesheets_page():
     st.write("Please enter your timesheet for the week. Enter the times in 24-hour format (HH\:MM). "
              "If you did not work on a particular day, leave the fields empty.")
 
-    st.write("For example, if you worked from 9:00 AM to 5:00 PM, enter 09:00 in From 17:00 in Till")
+    st.write("For example, if you worked from 9:00 AM to 5:00 PM, enter 09:00 in From and 17:00 in Till")
+
+    st.write("")
+
+    x, y = st.columns([1, 2])
 
     days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    with x:
+        st.write("")
+        if st.button("Submit Without Any Changes"):
+            # cool random animation :)
+            # if not not random.getrandbits(1):
+            #     st.snow()
+            #     time.sleep(4)
+            # else:
+            #     st.balloons()
+            #     time.sleep(3)
+            st.toast("Saving the timesheet...")
+            time.sleep(1)
+            st.toast("Mailing it to Mae and Julia...")
+            time.sleep(1)
+            st.toast("Done!", icon='🎉')
+            # time.sleep(0.5)
+            st.success("Timesheet submitted successfully!")
+            time.sleep(0.8)
+            for day in days:
+                print(day, '\n', st.session_state[day][f"1_{day}_from_1"], ' to ',
+                      st.session_state[day][f"1_{day}_till_1"],
+                      '\n', st.session_state[day][f"1_{day}_from_2"], ' to ', st.session_state[day][f"1_{day}_till_2"])
+
+                print(day, '\n', st.session_state[day][f"2_{day}_from_1"], ' to ',
+                      st.session_state[day][f"2_{day}_till_1"],
+                      '\n', st.session_state[day][f"2_{day}_from_2"], ' to ', st.session_state[day][f"2_{day}_till_2"])
+            st.success("Redirecting to dashboard...")
+            time.sleep(1)
+            st.session_state.current_page = 'dashboard'
+            st.rerun()
+    with y:
+        st.write("This will submit the timesheet with the default schedule."
+                 " If you want to make changes, please do so before submitting."
+                 " There's another submit button at the bottom of the page.")
+
+    st.write("")
+    st.session_state.total_hours = 0
+
+    for day in days:
+        for slot_index in range(1, 3):
+            start_key_1 = f"{slot_index}_{day}_from_1"
+            end_key_1 = f"{slot_index}_{day}_till_1"
+            start_key_2 = f"{slot_index}_{day}_from_2"
+            end_key_2 = f"{slot_index}_{day}_till_2"
+
+            # Calculate hours for the first week
+            if start_key_1 in st.session_state[day] and end_key_1 in st.session_state[day]:
+                try:
+                    start_time = datetime.datetime.strptime(st.session_state[day][start_key_1], '%H:%M')
+                    end_time = datetime.datetime.strptime(st.session_state[day][end_key_1], '%H:%M')
+                    st.session_state.total_hours += (end_time - start_time).seconds / 3600
+                except:
+                    pass
+
+            # Repeat the calculation for the second week
+            if start_key_2 in st.session_state[day] and end_key_2 in st.session_state[day]:
+                try:
+                    start_time = datetime.datetime.strptime(st.session_state[day][start_key_2], '%H:%M')
+                    end_time = datetime.datetime.strptime(st.session_state[day][end_key_2], '%H:%M')
+                    st.session_state.total_hours += (end_time - start_time).seconds / 3600
+                except:
+                    pass
+
+    st.write(f"Total Hours: ", round(st.session_state.total_hours, 1))
 
     for day in days:
         if day not in st.session_state:
@@ -296,6 +383,11 @@ def all_timesheets_page():
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"1_{day}_from_1"] and st.session_state[day][f"1_{day}_from_1"] != '':
                 st.error("Invalid format.")
+            try:
+                start_time_1 = st.session_state[day][f"1_{day}_from_1"]
+                start_time_1 = datetime.datetime.strptime(start_time_1, '%H:%M')
+            except:
+                start_time_1 = None
 
         with col4:
             try:
@@ -307,6 +399,11 @@ def all_timesheets_page():
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"1_{day}_till_1"] and st.session_state[day][f"1_{day}_till_1"] != '':
                 st.error("Invalid format.")
+            try:
+                end_time_1 = st.session_state[day][f"1_{day}_till_1"]
+                end_time_1 = datetime.datetime.strptime(end_time_1, '%H:%M')
+            except:
+                end_time_1 = None
 
         with col5:
             try:
@@ -318,6 +415,11 @@ def all_timesheets_page():
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"1_{day}_from_2"] and st.session_state[day][f"1_{day}_from_2"] != '':
                 st.error("Invalid format.")
+            try:
+                start_time_2 = st.session_state[day][f"1_{day}_from_2"]
+                start_time_2 = datetime.datetime.strptime(start_time_2, '%H:%M')
+            except:
+                start_time_2 = None
 
         with col6:
             try:
@@ -329,11 +431,22 @@ def all_timesheets_page():
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"1_{day}_till_2"] and st.session_state[day][f"1_{day}_till_2"] != '':
                 st.error("Invalid format.")
+            try:
+                end_time_2 = st.session_state[day][f"1_{day}_till_2"]
+                end_time_2 = datetime.datetime.strptime(end_time_2, '%H:%M')
+            except:
+                end_time_2 = None
 
         with col7:
             st.write("")
             st.write("")
-            st.write("0.00")
+            try:
+                total_hours = round(((end_time_1 - start_time_1).seconds / 3600), 1) + round(
+                    ((end_time_2 - start_time_2).seconds / 3600), 1)
+                st.write(total_hours)
+                st.session_state.total_hours += total_hours
+            except:
+                st.write("0.00")
 
     for day in days:
         if st.session_state[day][f"1_{day}_from_1"] != '' and st.session_state[day][f"1_{day}_till_1"] != '':
@@ -356,7 +469,7 @@ def all_timesheets_page():
         with col2:
             st.write("")
             st.write("")
-            date = week_start + datetime.timedelta(days=i)
+            date = week_start + datetime.timedelta(days=i + 7)
             st.write(date.strftime('%d %b'))
 
         with col3:
@@ -370,6 +483,12 @@ def all_timesheets_page():
             elif ':' not in st.session_state[day][f"2_{day}_from_1"] and st.session_state[day][f"2_{day}_from_1"] != '':
                 st.error("Invalid format.")
 
+            try:
+                start_time_1 = st.session_state[day][f"2_{day}_from_1"]
+                start_time_1 = datetime.datetime.strptime(start_time_1, '%H:%M')
+            except:
+                start_time_1 = None
+
         with col4:
             try:
                 value = schedule[day][0].get_end().strftime('%H:%M')
@@ -380,6 +499,11 @@ def all_timesheets_page():
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"2_{day}_till_1"] and st.session_state[day][f"2_{day}_till_1"] != '':
                 st.error("Invalid format.")
+            try:
+                end_time_1 = st.session_state[day][f"2_{day}_till_1"]
+                end_time_1 = datetime.datetime.strptime(end_time_1, '%H:%M')
+            except:
+                end_time_1 = None
 
         with col5:
             try:
@@ -391,6 +515,11 @@ def all_timesheets_page():
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"2_{day}_from_2"] and st.session_state[day][f"2_{day}_from_2"] != '':
                 st.error("Invalid format.")
+            try:
+                start_time_2 = st.session_state[day][f"2_{day}_from_2"]
+                start_time_2 = datetime.datetime.strptime(start_time_2, '%H:%M')
+            except:
+                start_time_2 = None
 
         with col6:
             try:
@@ -402,11 +531,22 @@ def all_timesheets_page():
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"2_{day}_till_2"] and st.session_state[day][f"2_{day}_till_2"] != '':
                 st.error("Invalid format.")
+            try:
+                end_time_2 = st.session_state[day][f"2_{day}_till_2"]
+                end_time_2 = datetime.datetime.strptime(end_time_2, '%H:%M')
+            except:
+                end_time_2 = None
 
         with col7:
             st.write("")
             st.write("")
-            st.write("0.00")
+            try:
+                total_hours = round(((end_time_1 - start_time_1).seconds / 3600), 1) + round(
+                    ((end_time_2 - start_time_2).seconds / 3600), 1)
+                st.write(total_hours)
+                st.session_state.total_hours += total_hours
+            except:
+                st.write("0.00")
 
     # validate the timesheet
     for day in days:
@@ -417,8 +557,48 @@ def all_timesheets_page():
             if st.session_state[day][f"2_{day}_from_2"] > st.session_state[day][f"2_{day}_till_2"]:
                 st.error(f"Invalid times for {day}. Start time must be before end time.")
 
+    # col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1, 1, 1, 1, 1, 1])
+    #
+    # with col1:
+    #     st.write("Total Hours")
+    #
+    # with col7:
+    #     st.write("0.00")
+
     # when user clicks submit, print the timesheet
     if st.button("Submit"):
+
+        # Converting the timesheet to a list of TimeSlot objects with pay period
+
+        pay_period = PayPeriod(week_start.strftime('%m/%d/%y'))
+
+        timeslots = []
+
+        for i, day in enumerate(days):
+            if st.session_state[day][f"1_{day}_from_1"] != '' and st.session_state[day][f"1_{day}_till_1"] != '':
+                timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i)).strftime('%m/%d/%y'),
+                                          st.session_state[day][f"1_{day}_from_1"],
+                                          st.session_state[day][f"1_{day}_till_1"]))
+            if st.session_state[day][f"1_{day}_from_2"] != '' and st.session_state[day][f"1_{day}_till_2"] != '':
+                timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i)).strftime('%m/%d/%y'),
+                                          st.session_state[day][f"1_{day}_from_2"],
+                                          st.session_state[day][f"1_{day}_till_2"]))
+            if st.session_state[day][f"2_{day}_from_1"] != '' and st.session_state[day][f"2_{day}_till_1"] != '':
+                timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i + 7)).strftime('%m/%d/%y'),
+                                          st.session_state[day][f"2_{day}_from_1"],
+                                          st.session_state[day][f"2_{day}_till_1"]))
+            if st.session_state[day][f"2_{day}_from_2"] != '' and st.session_state[day][f"2_{day}_till_2"] != '':
+                timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i + 7)).strftime('%m/%d/%y'),
+                                          st.session_state[day][f"2_{day}_from_2"],
+                                          st.session_state[day][f"2_{day}_till_2"]))
+
+        print(pay_period)
+
+        for i in timeslots:
+            pay_period.add_timeslot(i)
+
+        print(pay_period.get_timesheet_by_pay_period())
+
         # cool random animation :)
         # if not not random.getrandbits(1):
         #     st.snow()
@@ -426,6 +606,7 @@ def all_timesheets_page():
         # else:
         #     st.balloons()
         #     time.sleep(3)
+
         st.toast("Saving the timesheet...")
         time.sleep(1)
         st.toast("Mailing it to Mae and Julia...")
@@ -434,16 +615,10 @@ def all_timesheets_page():
         # time.sleep(0.5)
         st.success("Timesheet submitted successfully!")
         time.sleep(0.8)
-        for day in days:
-            print(day, '\n', st.session_state[day][f"1_{day}_from_1"], ' to ', st.session_state[day][f"1_{day}_till_1"],
-                  '\n', st.session_state[day][f"1_{day}_from_2"], ' to ', st.session_state[day][f"1_{day}_till_2"])
-
-            print(day, '\n', st.session_state[day][f"2_{day}_from_1"], ' to ', st.session_state[day][f"2_{day}_till_1"],
-                  '\n', st.session_state[day][f"2_{day}_from_2"], ' to ', st.session_state[day][f"2_{day}_till_2"])
         st.success("Redirecting to dashboard...")
         time.sleep(1)
-        st.session_state.current_page = 'dashboard'
-        st.rerun()
+        # st.session_state.current_page = 'dashboard'
+        # st.rerun()
 
 
 def signup_page():
@@ -601,4 +776,17 @@ elif st.session_state.current_page == 'all_timesheets':
 elif st.session_state.current_page == 'past_timesheets':
     past_timesheets_page()
 
-# print(st.session_state.page_history)
+# Feature to add:
+# -> Cookies
+# -> Mail the timesheet to the admin when user clicks submit
+# -> Send the confirmation email to the user when they submit
+# -> Disable the already submitted time sheets
+# -> Add some more elements in the StandardUser class to display in the dashboard
+# -> Add the ability to edit the default schedule
+# -> Add a back button to all pages
+# -> Add a dashboard button to all pages
+# -> Design the Admin Dashboard
+# -> Create Admin Dashboard
+# -> OTP for registration
+# -> Only msu.edu email addresses allowed
+# -> Only Mae and Julia can be admins

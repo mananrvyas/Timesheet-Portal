@@ -86,7 +86,7 @@ class PayPeriod:
                                                pay_period['timesheet'].items()})
 
 
-#
+
 # first_pay_period = PayPeriod('01/1/23')
 # custom_timeslots = [
 #     TimeSlot('01/02/23', '00:00', '7:00'),
