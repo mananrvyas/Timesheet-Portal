@@ -16,6 +16,7 @@ import requests
 import os
 from dotenv import load_dotenv
 import time
+from random import getrandbits
 
 load_dotenv()
 MAILGUN_API_KEY = os.getenv('MAILGUN_API_KEY')
@@ -27,11 +28,11 @@ st.set_page_config(page_title="Timesheet Portal")
 if 'DEFAULT_SCHEDULE' not in st.session_state:
     st.session_state.DEFAULT_SCHEDULE = {
         'Sunday': [],
-        'Monday': [TimeSlot('01/03/23', '09:00', '12:00'), TimeSlot('01/03/23', '13:00', '17:00')],
-        'Tuesday': [TimeSlot('01/04/23', '09:00', '12:00'), TimeSlot('01/04/23', '13:00', '17:00')],
-        'Wednesday': [TimeSlot('01/05/23', '09:00', '12:00'), TimeSlot('01/05/23', '13:00', '17:00')],
-        'Thursday': [TimeSlot('01/06/23', '09:00', '12:00'), TimeSlot('01/06/23', '13:00', '17:00')],
-        'Friday': [TimeSlot('01/07/23', '09:00', '12:00'), TimeSlot('01/07/23', '13:00', '17:00')],
+        'Monday': [TimeSlot('01/03/23', '09:00', '11:00'), TimeSlot('01/03/23', '13:00', '17:00')],
+        'Tuesday': [TimeSlot('01/04/23', '09:10', '12:00'), TimeSlot('01/04/23', '14:00', '17:00')],
+        'Wednesday': [TimeSlot('01/05/23', '09:50', '12:00'), TimeSlot('01/05/23', '15:00', '17:00')],
+        'Thursday': [TimeSlot('01/06/23', '09:40', '12:00'), TimeSlot('01/06/23', '16:00', '17:00')],
+        'Friday': [TimeSlot('01/07/23', '09:30', '12:00'), TimeSlot('01/07/23', '16:30', '17:00')],
         'Saturday': []
     }
 
@@ -78,13 +79,15 @@ def login_page():
 
     st.title("Sign In")
     st.subheader("Sign in to the Timesheet Portal")
+    st.write("For auto filling password, go to password field, not the username field.")
+    form = st.form(key='login_form')
 
-    username = st.text_input("Username")
-    password = st.text_input("Password", type='password')
+    username = form.text_input("Username")
+    password = form.text_input("Password", type='password')
 
-    st.checkbox("Remember me")  # doesnt work lol
-
-    if st.button("Sign In"):
+    form.checkbox("Remember me")  # doesnt work lol
+    # ################ Add remember me functionality #################
+    if form.form_submit_button("Sign In"):
         hashed_pwd = hashlib.sha256(password.encode()).hexdigest()
         # Authenticate user
         user = None
@@ -182,10 +185,17 @@ def dashboard_page():
 
     with col2:
         st.header("Timesheets")
-        if st.button("See All Timesheets"):
-            st.session_state.page_history.append(st.session_state.current_page)
-            st.session_state.current_page = 'all_timesheets'
-            st.rerun()
+        col3, col4 = st.columns(2)
+        with col3:
+            if st.button("See Past Timesheets"):
+                st.session_state.page_history.append(st.session_state.current_page)
+                st.session_state.current_page = 'past_timesheets'
+                st.rerun()
+        with col4:
+            if st.button("Submit a Timesheet"):
+                st.session_state.page_history.append(st.session_state.current_page)
+                st.session_state.current_page = 'all_timesheets'
+                st.rerun()
 
         timesheet_df = create_timesheet_data()
         timesheet_chart = plot_timesheet_bar_chart(timesheet_df)
@@ -199,6 +209,12 @@ def dashboard_page():
         """, unsafe_allow_html=True)
 
 
+def past_timesheets_page():
+    st.title("Past Timesheets")
+    st.write("This is the past timesheets page.")
+    st.write("Here, the user can view their past timesheets and some interesting statistics about their work.")
+
+
 def all_timesheets_page():
     st.title("Submit a Timesheets")
 
@@ -206,7 +222,7 @@ def all_timesheets_page():
 
     def get_week_range(date):
         start = date - datetime.timedelta(days=date.weekday() + 1)
-        end = start + datetime.timedelta(days=6)
+        end = start + datetime.timedelta(days=13)
         return start, end
 
     if 'current_week' not in st.session_state:
@@ -218,6 +234,9 @@ def all_timesheets_page():
     with col1:
         if st.button('<<'):
             st.session_state.current_week -= datetime.timedelta(days=7)
+            st.toast("Loading...")
+            time.sleep(1)
+            # st.toast("Done!", icon='🎉')
             st.rerun()
     with col2:
         st.write(f"Timesheet for week: {week_start.strftime('%A %d %b %Y')} - {week_end.strftime('%A %d %b %Y')}")
@@ -225,7 +244,9 @@ def all_timesheets_page():
     with col3:
         if st.button('\>>'):
             st.session_state.current_week += datetime.timedelta(days=7)
-
+            st.toast("Loading...")
+            time.sleep(1)
+            # st.toast("Done!", icon='🎉')
             st.rerun()
 
     st.write("Please enter your timesheet for the week. Enter the times in 24-hour format (HH\:MM). "
@@ -238,6 +259,19 @@ def all_timesheets_page():
     for day in days:
         if day not in st.session_state:
             st.session_state[day] = {}
+
+    username = st.session_state.user_info['username']
+    user = None
+    for i in st.session_state.USERS:
+        if i.username == username:
+            user = i
+            break
+
+    if user is not None:
+        schedule = user.default_schedule
+    else:
+        st.error("User not found. Please contact the administrator (or try logging in again).")
+        return
 
     for i, day in enumerate(days):
         col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1, 1, 1, 1, 1, 1])
@@ -253,31 +287,120 @@ def all_timesheets_page():
             st.write(date.strftime('%d %b'))
 
         with col3:
-            st.session_state[day][f"{day}_from_1"] = st.text_input(f"From", key=f"{day}_from_1")
-            if len(st.session_state[day][f"{day}_from_1"]) != 5 and st.session_state[day][f"{day}_from_1"] != '':
+            try:
+                value = schedule[day][0].get_start().strftime('%H:%M')
+            except:
+                value = ''
+            st.session_state[day][f"1_{day}_from_1"] = st.text_input(f"From", key=f"1_{day}_from_1", value=value)
+            if len(st.session_state[day][f"1_{day}_from_1"]) != 5 and st.session_state[day][f"1_{day}_from_1"] != '':
                 st.error("Invalid format.")
-            elif ':' not in st.session_state[day][f"{day}_from_1"] and st.session_state[day][f"{day}_from_1"] != '':
+            elif ':' not in st.session_state[day][f"1_{day}_from_1"] and st.session_state[day][f"1_{day}_from_1"] != '':
                 st.error("Invalid format.")
 
         with col4:
-            st.session_state[day][f"{day}_till_1"] = st.text_input(f"Till", key=f"{day}_till_1")
-            if len(st.session_state[day][f"{day}_till_1"]) != 5 and st.session_state[day][f"{day}_till_1"] != '':
+            try:
+                value = schedule[day][0].get_end().strftime('%H:%M')
+            except:
+                value = ''
+            st.session_state[day][f"1_{day}_till_1"] = st.text_input(f"Till", key=f"1_{day}_till_1", value=value)
+            if len(st.session_state[day][f"1_{day}_till_1"]) != 5 and st.session_state[day][f"1_{day}_till_1"] != '':
                 st.error("Invalid format.")
-            elif ':' not in st.session_state[day][f"{day}_till_1"] and st.session_state[day][f"{day}_till_1"] != '':
+            elif ':' not in st.session_state[day][f"1_{day}_till_1"] and st.session_state[day][f"1_{day}_till_1"] != '':
                 st.error("Invalid format.")
 
         with col5:
-            st.session_state[day][f"{day}_from_2"] = st.text_input(f"From", key=f"{day}_from_2")
-            if len(st.session_state[day][f"{day}_from_2"]) != 5 and st.session_state[day][f"{day}_from_2"] != '':
+            try:
+                value = schedule[day][1].get_start().strftime('%H:%M')
+            except:
+                value = ''
+            st.session_state[day][f"1_{day}_from_2"] = st.text_input(f"From", key=f"1_{day}_from_2", value=value)
+            if len(st.session_state[day][f"1_{day}_from_2"]) != 5 and st.session_state[day][f"1_{day}_from_2"] != '':
                 st.error("Invalid format.")
-            elif ':' not in st.session_state[day][f"{day}_from_2"] and st.session_state[day][f"{day}_from_2"] != '':
+            elif ':' not in st.session_state[day][f"1_{day}_from_2"] and st.session_state[day][f"1_{day}_from_2"] != '':
                 st.error("Invalid format.")
 
         with col6:
-            st.session_state[day][f"{day}_till_2"] = st.text_input(f"Till", key=f"{day}_till_2")
-            if len(st.session_state[day][f"{day}_till_2"]) != 5 and st.session_state[day][f"{day}_till_2"] != '':
+            try:
+                value = schedule[day][1].get_end().strftime('%H:%M')
+            except:
+                value = ''
+            st.session_state[day][f"1_{day}_till_2"] = st.text_input(f"Till", key=f"1_{day}_till_2", value=value)
+            if len(st.session_state[day][f"1_{day}_till_2"]) != 5 and st.session_state[day][f"1_{day}_till_2"] != '':
                 st.error("Invalid format.")
-            elif ':' not in st.session_state[day][f"{day}_till_2"] and st.session_state[day][f"{day}_till_2"] != '':
+            elif ':' not in st.session_state[day][f"1_{day}_till_2"] and st.session_state[day][f"1_{day}_till_2"] != '':
+                st.error("Invalid format.")
+
+        with col7:
+            st.write("")
+            st.write("")
+            st.write("0.00")
+
+    for day in days:
+        if st.session_state[day][f"1_{day}_from_1"] != '' and st.session_state[day][f"1_{day}_till_1"] != '':
+            if st.session_state[day][f"1_{day}_from_1"] > st.session_state[day][f"1_{day}_till_1"]:
+                st.error(f"Invalid times for {day}. Start time must be before end time.")
+        if st.session_state[day][f"1_{day}_from_2"] != '' and st.session_state[day][f"1_{day}_till_2"] != '':
+            if st.session_state[day][f"1_{day}_from_2"] > st.session_state[day][f"1_{day}_till_2"]:
+                st.error(f"Invalid times for {day}. Start time must be before end time.")
+
+    days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+    # i know this is a bad way to do it but i'm too lazy to fix it :/
+    for i, day in enumerate(days):
+        col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1, 1, 1, 1, 1, 1])
+        with col1:
+            st.write("")
+            st.write("")
+            st.write(day)
+
+        with col2:
+            st.write("")
+            st.write("")
+            date = week_start + datetime.timedelta(days=i)
+            st.write(date.strftime('%d %b'))
+
+        with col3:
+            try:
+                value = schedule[day][0].get_start().strftime('%H:%M')
+            except:
+                value = ''
+            st.session_state[day][f"2_{day}_from_1"] = st.text_input(f"From", key=f"2_{day}_from_1", value=value)
+            if len(st.session_state[day][f"2_{day}_from_1"]) != 5 and st.session_state[day][f"2_{day}_from_1"] != '':
+                st.error("Invalid format.")
+            elif ':' not in st.session_state[day][f"2_{day}_from_1"] and st.session_state[day][f"2_{day}_from_1"] != '':
+                st.error("Invalid format.")
+
+        with col4:
+            try:
+                value = schedule[day][0].get_end().strftime('%H:%M')
+            except:
+                value = ''
+            st.session_state[day][f"2_{day}_till_1"] = st.text_input(f"Till", key=f"2_{day}_till_1", value=value)
+            if len(st.session_state[day][f"2_{day}_till_1"]) != 5 and st.session_state[day][f"2_{day}_till_1"] != '':
+                st.error("Invalid format.")
+            elif ':' not in st.session_state[day][f"2_{day}_till_1"] and st.session_state[day][f"2_{day}_till_1"] != '':
+                st.error("Invalid format.")
+
+        with col5:
+            try:
+                value = schedule[day][1].get_start().strftime('%H:%M')
+            except:
+                value = ''
+            st.session_state[day][f"2_{day}_from_2"] = st.text_input(f"From", key=f"2_{day}_from_2", value=value)
+            if len(st.session_state[day][f"2_{day}_from_2"]) != 5 and st.session_state[day][f"2_{day}_from_2"] != '':
+                st.error("Invalid format.")
+            elif ':' not in st.session_state[day][f"2_{day}_from_2"] and st.session_state[day][f"2_{day}_from_2"] != '':
+                st.error("Invalid format.")
+
+        with col6:
+            try:
+                value = schedule[day][1].get_end().strftime('%H:%M')
+            except:
+                value = ''
+            st.session_state[day][f"2_{day}_till_2"] = st.text_input(f"Till", key=f"2_{day}_till_2", value=value)
+            if len(st.session_state[day][f"2_{day}_till_2"]) != 5 and st.session_state[day][f"2_{day}_till_2"] != '':
+                st.error("Invalid format.")
+            elif ':' not in st.session_state[day][f"2_{day}_till_2"] and st.session_state[day][f"2_{day}_till_2"] != '':
                 st.error("Invalid format.")
 
         with col7:
@@ -287,22 +410,40 @@ def all_timesheets_page():
 
     # validate the timesheet
     for day in days:
-        if st.session_state[day][f"{day}_from_1"] != '' and st.session_state[day][f"{day}_till_1"] != '':
-            if st.session_state[day][f"{day}_from_1"] > st.session_state[day][f"{day}_till_1"]:
+        if st.session_state[day][f"2_{day}_from_1"] != '' and st.session_state[day][f"2_{day}_till_1"] != '':
+            if st.session_state[day][f"2_{day}_from_1"] > st.session_state[day][f"2_{day}_till_1"]:
                 st.error(f"Invalid times for {day}. Start time must be before end time.")
-        if st.session_state[day][f"{day}_from_2"] != '' and st.session_state[day][f"{day}_till_2"] != '':
-            if st.session_state[day][f"{day}_from_2"] > st.session_state[day][f"{day}_till_2"]:
+        if st.session_state[day][f"2_{day}_from_2"] != '' and st.session_state[day][f"2_{day}_till_2"] != '':
+            if st.session_state[day][f"2_{day}_from_2"] > st.session_state[day][f"2_{day}_till_2"]:
                 st.error(f"Invalid times for {day}. Start time must be before end time.")
 
     # when user clicks submit, print the timesheet
     if st.button("Submit"):
-        st.balloons()
-        st.snow()
-        time.sleep(2)
+        # cool random animation :)
+        # if not not random.getrandbits(1):
+        #     st.snow()
+        #     time.sleep(4)
+        # else:
+        #     st.balloons()
+        #     time.sleep(3)
+        st.toast("Saving the timesheet...")
+        time.sleep(1)
+        st.toast("Mailing it to Mae and Julia...")
+        time.sleep(1)
+        st.toast("Done!", icon='🎉')
+        # time.sleep(0.5)
         st.success("Timesheet submitted successfully!")
+        time.sleep(0.8)
         for day in days:
-            print(day, '\n', st.session_state[day][f"{day}_from_1"], ' to ', st.session_state[day][f"{day}_till_1"],
-                  '\n', st.session_state[day][f"{day}_from_2"], ' to ', st.session_state[day][f"{day}_till_2"])
+            print(day, '\n', st.session_state[day][f"1_{day}_from_1"], ' to ', st.session_state[day][f"1_{day}_till_1"],
+                  '\n', st.session_state[day][f"1_{day}_from_2"], ' to ', st.session_state[day][f"1_{day}_till_2"])
+
+            print(day, '\n', st.session_state[day][f"2_{day}_from_1"], ' to ', st.session_state[day][f"2_{day}_till_1"],
+                  '\n', st.session_state[day][f"2_{day}_from_2"], ' to ', st.session_state[day][f"2_{day}_till_2"])
+        st.success("Redirecting to dashboard...")
+        time.sleep(1)
+        st.session_state.current_page = 'dashboard'
+        st.rerun()
 
 
 def signup_page():
@@ -457,5 +598,7 @@ elif st.session_state.current_page == 'forgot_password':
     forgot_password_page()
 elif st.session_state.current_page == 'all_timesheets':
     all_timesheets_page()
+elif st.session_state.current_page == 'past_timesheets':
+    past_timesheets_page()
 
 # print(st.session_state.page_history)
