@@ -38,6 +38,13 @@ class StandardUser:
     def get_timesheets(self):
         return self.timesheets
 
+    def get_latest_timesheet_status(self):
+        pay_period = self.get_latest_pay_period()
+        return pay_period.is_approved
+
+    def get_latest_pay_period(self):
+        return self.timesheets[-1]['pay_period']
+
     def edit_default_schedule(self, schedule):
         self.default_schedule = schedule
 
@@ -110,6 +117,9 @@ class StandardUser:
 
     @staticmethod
     def deserialize(user):
+
+        # if error in deserialize, check the line 67 in payperiod.py
+
         deserialized_schedule = {day: [TimeSlot.deserialize(slot) for slot in slots]
                                  for day, slots in user['default_schedule'].items()}
 
@@ -134,14 +144,23 @@ default_schedule = {
         'Saturday': []
     }
 
-# user = StandardUser('johndoe', 'password123', 'employee', 'company', default_schedule)
+user = StandardUser('johndoe', 'password123', 'employee', 'company','vyasmana@msu.edu', default_schedule)
 # print(user)
-# print('------------------')
+print('------------------')
 # print(user.serialize())
+
+first_pay_period = PayPeriod('01/01/23')
+
+user.submit_default_schedule(first_pay_period)
+
+# print(user)
 #
-# first_pay_period = PayPeriod('01/01/23')
-#
-# user.submit_default_schedule(first_pay_period)
+# print(user.timesheets)
+print(user.get_latest_timesheet_status())
+
+# print(first_pay_period.is_approved)
+
+
 # print(user)
 # print('------------------')
 # print(user.serialize())

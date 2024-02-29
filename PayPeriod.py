@@ -64,7 +64,7 @@ class PayPeriod:
         return f"{self._start.strftime('%m/%d/%y')}"
 
     def get_pay_period_and_timesheet(self):
-        return {'pay_period': self._start.strftime('%m/%d/%y'), 'timesheet': self._timesheet}
+        return {'pay_period': self, 'timesheet': self._timesheet}
 
     def serialize(self):
         return {

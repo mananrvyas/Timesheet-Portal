@@ -54,7 +54,7 @@ if 'DEFAULT_SCHEDULE' not in st.session_state:
 
 if 'USERS' not in st.session_state:
     st.session_state.USERS = [
-        StandardUser('admin', hashlib.sha256('admin'.encode()).hexdigest(), 'admin', 'MSU', 'admin@msu.edu'
+        StandardUser('Mae', hashlib.sha256('admin'.encode()).hexdigest(), 'admin', 'MSU', 'admin@msu.edu'
                      , st.session_state.DEFAULT_SCHEDULE),
         StandardUser('Manan', hashlib.sha256('Manan'.encode()).hexdigest(), 'user', 'MSU', 'vyasmana@msu.edu',
                      st.session_state.DEFAULT_SCHEDULE)]
@@ -137,9 +137,109 @@ def login_page():
 
 
 def admin_dashboard_page():
-    st.title("Admin Dashboard")
-    st.write(f"Welcome, {st.session_state.user_info['username']} (Admin)")
-    st.write("This is the admin dashboard.")
+    current_time = datetime.datetime.now().strftime("%H:%M:%S")
+
+    if "00:00:00" < current_time < "12:00:00":
+        st.title(f"Good Morning, {st.session_state.user_info['username']}")
+    elif "12:00:00" < current_time < "17:00:00":
+        st.title(f"Good Afternoon, {st.session_state.user_info['username']}")
+    else:
+        st.title(f"Good Evening, {st.session_state.user_info['username']}")
+
+    st.write("Select a user to view their timesheets")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    dummy_list = [f'dummy_{i}' for i in range(1, 13)]
+    user_list = [i.username for i in st.session_state.USERS]
+
+    for i in range(0, 12):
+        try:
+            dummy_list[i] = user_list[i]
+        except:
+            continue
+
+    with col1:
+        if st.button(dummy_list[0]):
+            st.session_state.admin_selected_user = dummy_list[0]
+            st.rerun()
+        if st.button(dummy_list[4]):
+            st.session_state.admin_selected_user = dummy_list[4]
+            st.rerun()
+        if st.button(dummy_list[8]):
+            st.session_state.admin_selected_user = dummy_list[8]
+            st.rerun()
+    with col2:
+        if st.button(dummy_list[1]):
+            st.session_state.admin_selected_user = dummy_list[1]
+            st.rerun()
+        if st.button(dummy_list[5]):
+            st.session_state.admin_selected_user = dummy_list[5]
+            st.rerun()
+        if st.button(dummy_list[9]):
+            st.session_state.admin_selected_user = dummy_list[9]
+            st.rerun()
+
+    with col3:
+        if st.button(dummy_list[2]):
+            st.session_state.admin_selected_user = dummy_list[2]
+            st.rerun()
+        if st.button(dummy_list[6]):
+            st.session_state.admin_selected_user = dummy_list[6]
+            st.rerun()
+        if st.button(dummy_list[10]):
+            st.session_state.admin_selected_user = dummy_list[10]
+            st.rerun()
+
+    with col4:
+        if st.button(dummy_list[3]):
+            st.session_state.admin_selected_user = dummy_list[3]
+            st.rerun()
+        if st.button(dummy_list[7]):
+            st.session_state.admin_selected_user = dummy_list[7]
+            st.rerun()
+        if st.button(dummy_list[11]):
+            st.session_state.admin_selected_user = dummy_list[11]
+            st.rerun()
+
+    admin_selected_user = None
+
+    try:
+        for i in st.session_state.USERS:
+            if i.username == st.session_state.admin_selected_user:
+                admin_selected_user = i
+                break
+    except:
+        pass
+
+    st.write(" ")
+
+    st.write(f"The users who require your attention are colored in blue. (TODO).")
+
+    st.write("--" * 15)
+
+    if admin_selected_user is not None:
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"<p class='big-font'> Past time sheets Graph", unsafe_allow_html=True)
+
+        with col2:
+            st.markdown(f"<p class='big-font'>{admin_selected_user.username}\'s Notifications</p>",
+                        unsafe_allow_html=True)
+            st.markdown("""
+            <style>
+            .big-font {
+                font-size:25px !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
+            col3, col4 = st.columns(2)
+            with col3:
+                st.write("Actions")
+                st.write("Approve/Reject Timesheets")
+            with col4:
+                st.write("Notifications")
 
 
 def create_timesheet_data():
@@ -198,6 +298,11 @@ def dashboard_page():
         st.write(f"Email: vyasmana@msu.edu")
         st.write(f"Phone: (517) 980-1536")
         st.write(f"Town: East Lansing")
+        if st.button("Edit your profile"):
+            pass
+        if st.button("Edit default schedule"):
+            st.session_state.current_page = 'edit_default_schedule'
+            st.rerun()
 
     with col2:
         st.header("Timesheets")
@@ -577,10 +682,11 @@ def all_timesheets_page():
 
     st.session_state.total_hours = pay_period.get_total_hours()
 
+    print(pretty_print_timesheet(pay_period))
+
     st.write(f"Total Hours: ", round(st.session_state.total_hours, 1))
 
     if st.button("Submit"):
-
         # Converting the timesheet to a list of TimeSlot objects with pay period
 
         print(pay_period.get_timesheet_by_pay_period())
@@ -605,6 +711,25 @@ def all_timesheets_page():
         time.sleep(1)
         # st.session_state.current_page = 'dashboard'
         # st.rerun()
+
+
+def pretty_print_timesheet(pay_period):
+    output = [f"Pay Period Start Date: {pay_period.get_start_date().strftime('%m/%d/%y')}",
+              f"Pay Period End Date: {pay_period.get_end_date().strftime('%m/%d/%y')}\n"]
+
+    timesheet = pay_period.get_timesheet_by_pay_period()
+
+    sorted_dates = sorted(timesheet.keys(), key=lambda x: datetime.datetime.strptime(x, '%m/%d/%y'))
+
+    for date_str in sorted_dates:
+        timeslots = timesheet[date_str]
+        output.append(f"Date: {date_str}")
+        for slot in timeslots:
+            start_time = slot.get_start().strftime('%H:%M')
+            end_time = slot.get_end().strftime('%H:%M')
+            output.append(f" - Time Slot: {start_time} to {end_time}")
+
+    return "\n".join(output)
 
 
 def signup_page():
@@ -747,6 +872,185 @@ def send_otp(user, otp, mail):
               "text": f"{content}"})
 
 
+def edit_default_schedule_page():
+    # get the user and display their default schedule
+    user = None
+    for i in st.session_state.USERS:
+        if i.username == st.session_state.user_info['username']:
+            user = i
+            break
+    if user is None:
+        st.error("User not found. Please contact the administrator (or create an account).")
+        return
+
+    st.title("Edit Default Schedule")
+    st.write("This is your default schedule. You can edit it here.")
+    st.write("Here also, you have to enter the times in 24-hour format (HH\:MM). \n"
+             "For example, if you work from 9:00 AM to 5:00 PM, enter 09:00 in From and 17:00 in Till")
+
+    default_schedule = user.default_schedule
+
+    days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+    # print(default_schedule)
+
+    if 'user_default_schedule' not in st.session_state:
+        st.session_state.user_default_schedule = {}
+
+    # for j in days:
+    #     if j not in st.session_state['user_default_schedule']:
+    #         st.session_state['user_default_schedule'][j] = []
+
+    base_date = datetime.datetime(2023, 1, 2)
+    count = 0
+
+    for i in days:
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
+
+        with col1:
+            st.write("")
+            st.write("")
+            st.write(i)
+
+        with col2:
+            try:
+                value = default_schedule[i][0].get_start().strftime('%H:%M')
+            except:
+                value = ''
+            st.session_state['user_default_schedule'][f"{i}_from_1"] = st.text_input(f"From", key=f"{i}_from_1", value=value)
+
+        with col3:
+            try:
+                value = default_schedule[i][0].get_end().strftime('%H:%M')
+            except:
+                value = ''
+            st.session_state['user_default_schedule'][f"{i}_till_1"] = st.text_input(f"Till", key=f"{i}_till_1", value=value)
+
+        with col4:
+            try:
+                value = default_schedule[i][1].get_start().strftime('%H:%M')
+            except:
+                value = ''
+            st.session_state['user_default_schedule'][f"{i}_from_2"] = st.text_input(f"From", key=f"{i}_from_2", value=value)
+
+        with col5:
+            try:
+                value = default_schedule[i][1].get_end().strftime('%H:%M')
+            except:
+                value = ''
+            st.session_state['user_default_schedule'][f"{i}_till_2"] = st.text_input(f"Till", key=f"{i}_till_2", value=value)
+
+        # print(st.session_state['user_default_schedule'])
+
+        with col6:
+            st.write("")
+            st.write("")
+            try:
+                total_hours = 0
+                # get total hours from the values entered (session state)
+                if st.session_state['user_default_schedule'][f"{i}_from_1"] != '' and st.session_state['user_default_schedule'][
+                    f"{i}_till_1"] != '':
+                    start_time_1 = st.session_state['user_default_schedule'][f"{i}_from_1"]
+                    start_time_1 = datetime.datetime.strptime(start_time_1, '%H:%M')
+                    end_time_1 = st.session_state['user_default_schedule'][f"{i}_till_1"]
+                    end_time_1 = datetime.datetime.strptime(end_time_1, '%H:%M')
+                    total_hours = round(((end_time_1 - start_time_1).seconds / 3600), 1)
+
+                if st.session_state['user_default_schedule'][f"{i}_from_2"] != '' and st.session_state['user_default_schedule'][
+                    f"{i}_till_2"] != '':
+                    start_time_2 = st.session_state['user_default_schedule'][f"{i}_from_2"]
+                    start_time_2 = datetime.datetime.strptime(start_time_2, '%H:%M')
+                    end_time_2 = st.session_state['user_default_schedule'][f"{i}_till_2"]
+                    end_time_2 = datetime.datetime.strptime(end_time_2, '%H:%M')
+                    total_hours += round(((end_time_2 - start_time_2).seconds / 3600), 1)
+                if total_hours == 0:
+                    st.write("0.00")
+                else:
+                    st.write(total_hours)
+            except:
+                st.write("0.00")
+
+    total_hours = 0
+
+    for i in days:
+        # get total hours from the values entered (session state)
+        if st.session_state['user_default_schedule'][f"{i}_from_1"] != '' and \
+                st.session_state['user_default_schedule'][
+                    f"{i}_till_1"] != '':
+            start_time_1 = st.session_state['user_default_schedule'][f"{i}_from_1"]
+            start_time_1 = datetime.datetime.strptime(start_time_1, '%H:%M')
+            end_time_1 = st.session_state['user_default_schedule'][f"{i}_till_1"]
+            end_time_1 = datetime.datetime.strptime(end_time_1, '%H:%M')
+            total_hours += round(((end_time_1 - start_time_1).seconds / 3600), 1)
+
+        if st.session_state['user_default_schedule'][f"{i}_from_2"] != '' and \
+                st.session_state['user_default_schedule'][
+                    f"{i}_till_2"] != '':
+            start_time_2 = st.session_state['user_default_schedule'][f"{i}_from_2"]
+            start_time_2 = datetime.datetime.strptime(start_time_2, '%H:%M')
+            end_time_2 = st.session_state['user_default_schedule'][f"{i}_till_2"]
+            end_time_2 = datetime.datetime.strptime(end_time_2, '%H:%M')
+            total_hours += round(((end_time_2 - start_time_2).seconds / 3600), 1)
+
+    st.write(f"Total Hours: ", round(total_hours, 1))
+
+    # validate the timesheet
+    for day in days:
+        if st.session_state['user_default_schedule'][f"{day}_from_1"] != '' and st.session_state['user_default_schedule'][f"{day}_till_1"] != '':
+            if st.session_state['user_default_schedule'][f"{day}_from_1"] > st.session_state['user_default_schedule'][f"{day}_till_1"]:
+                st.error(f"Invalid times for {day}. Start time must be before end time.")
+        if st.session_state['user_default_schedule'][f"{day}_from_2"] != '' and st.session_state['user_default_schedule'][f"{day}_till_2"] != '':
+            if st.session_state['user_default_schedule'][f"{day}_from_2"] > st.session_state['user_default_schedule'][f"{day}_till_2"]:
+                st.error(f"Invalid times for {day}. Start time must be before end time.")
+
+        # check for invalid format
+        if len(st.session_state['user_default_schedule'][f"{day}_from_1"]) != 5 and st.session_state['user_default_schedule'][f"{day}_from_1"] != '':
+            st.error("Invalid format.")
+        elif ':' not in st.session_state['user_default_schedule'][f"{day}_from_1"] and st.session_state['user_default_schedule'][f"{day}_from_1"] != '':
+            st.error("Invalid format.")
+
+        # check for overlapping times
+        if st.session_state['user_default_schedule'][f"{day}_from_1"] != '' and st.session_state['user_default_schedule'][f"{day}_till_1"] != '' and st.session_state['user_default_schedule'][f"{day}_from_2"] != '' and st.session_state['user_default_schedule'][f"{day}_till_2"] != '':
+            if st.session_state['user_default_schedule'][f"{day}_from_1"] < st.session_state['user_default_schedule'][f"{day}_till_1"] and st.session_state['user_default_schedule'][f"{day}_from_2"] < st.session_state['user_default_schedule'][f"{day}_till_2"]:
+                if st.session_state['user_default_schedule'][f"{day}_till_1"] > st.session_state['user_default_schedule'][f"{day}_from_2"]:
+                    st.error(f"Overlapping times for {day}.")
+
+    if st.button("Save Changes"):
+        # God-bless co-pilot
+        custom_schedule = {}
+        for day in days:
+            custom_schedule[day] = []
+
+            day_date_str = (base_date + datetime.timedelta(days=count)).strftime('%m/%d/%y')
+            count += 1
+
+            for slot_index in [1, 2]:
+                from_key = f"{day}_from_{slot_index}"
+                till_key = f"{day}_till_{slot_index}"
+                start_time = st.session_state['user_default_schedule'].get(from_key, '').strip()
+                end_time = st.session_state['user_default_schedule'].get(till_key, '').strip()
+
+                if start_time and end_time:
+                    try:
+                        time_slot = TimeSlot(day_date_str, start_time, end_time)
+                        if day not in custom_schedule:
+                            custom_schedule[day] = []
+                        custom_schedule[day].append(time_slot)
+                    except ValueError as e:
+                        st.error(f"Error creating time slot for {day}: {e}")
+
+        user.default_schedule = custom_schedule
+
+        st.toast("Saving the default schedule...")
+        time.sleep(1)
+        st.toast("Done!", icon='🎉')
+        time.sleep(0.5)
+        st.success("Redirecting to dashboard...")
+        time.sleep(0.5)
+        st.session_state.current_page = 'dashboard'
+        st.rerun()
+
+
 if st.session_state.current_page == 'login':
     login_page()
 elif st.session_state.current_page == 'signup':
@@ -761,6 +1065,8 @@ elif st.session_state.current_page == 'all_timesheets':
     all_timesheets_page()
 elif st.session_state.current_page == 'past_timesheets':
     past_timesheets_page()
+elif st.session_state.current_page == 'edit_default_schedule':
+    edit_default_schedule_page()
 
 # Feature to add:
 # -> Cookies
@@ -776,3 +1082,4 @@ elif st.session_state.current_page == 'past_timesheets':
 # -> OTP for registration
 # -> Only msu.edu email addresses allowed
 # -> Only Mae and Julia can be admins
+# -> Use an actual database
