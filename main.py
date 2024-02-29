@@ -1038,6 +1038,10 @@ def edit_default_schedule_page():
                         custom_schedule[day].append(time_slot)
                     except ValueError as e:
                         st.error(f"Error creating time slot for {day}: {e}")
+                else:
+                    if start_time or end_time:
+                        st.error(f"Please enter both start and end times for {day} slot {slot_index}")
+                        return
 
         user.default_schedule = custom_schedule
 
@@ -1074,10 +1078,10 @@ elif st.session_state.current_page == 'edit_default_schedule':
 # -> Send the confirmation email to the user when they submit
 # -> Disable the already submitted time sheets
 # -> Add some more elements in the StandardUser class to display in the dashboard
-# -> Add the ability to edit the default schedule
+# -> Add the ability to edit the default schedule (DONE)
 # -> Add a back button to all pages
 # -> Add a dashboard button to all pages
-# -> Design the Admin Dashboard
+# -> Design the Admin Dashboard (DONE)
 # -> Create Admin Dashboard
 # -> OTP for registration
 # -> Only msu.edu email addresses allowed
