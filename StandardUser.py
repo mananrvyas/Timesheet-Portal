@@ -12,7 +12,7 @@ class StandardUser:
         self._default_schedule = default_schedule if default_schedule else {}
         self._timesheets = timesheets
         self._organization = organization
-        self._email_address = email_address
+        self._email_address = username + '@msu.edu'
         self._fname = None
         self._lname = None
         self._photo = None

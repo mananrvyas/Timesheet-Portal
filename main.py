@@ -308,10 +308,10 @@ def dashboard_page():
         if user._fname is None and user._lname is None:
             st.write("Click on edit profile to add your name.")
         else:
-            st.write(f"Name: {user._fname} {user._lname}")
+            st.write(f"Name: {user._fname if user._fname else ''} {user._lname if user._lname else ''}")
         st.write(f"Email: {user._email_address}")
-        st.write(f"Phone: {user._phone_number}")
-        st.write(f"{user._miscellaneous}")
+        st.write(f"Phone: {user._phone_number if user._phone_number else ''}")
+        st.write(f"{user._miscellaneous if user._miscellaneous else ''}")
         if st.button("Edit your profile"):
             st.session_state.current_page = 'edit_profile'
             st.rerun()
@@ -364,6 +364,7 @@ button[title="View fullscreen"]{
 '''
 
 st.markdown(hide_img_fs, unsafe_allow_html=True)
+
 
 def all_timesheets_page():
     st.title("Submit a Timesheets")
@@ -767,45 +768,61 @@ def pretty_print_timesheet(pay_period):
 
 def signup_page():
     st.title("Signup Page")
-    username = st.text_input("Choose a Username")
+    username = st.text_input("Enter your username (should be your NetID)")
     password = st.text_input("Choose a Password", type='password')
+    if 8 > len(password) > 0:
+        st.error("Password must be at least 8 characters long.")
     role = st.selectbox("Role", ['user', 'admin'])
     if role == 'admin':
         admin_pin = st.text_input("Admin PIN", type='password')
         if admin_pin != ADMIN_PIN and admin_pin != '':
             st.error("Invalid Admin PIN")
             return
-    email = st.text_input("Email Address")
+
     organization = st.text_input("Organization")
+
+    if 'create_account_otp' not in st.session_state:
+        st.session_state.create_account_otp = None
 
     for i in st.session_state.USERS:
         if i._username == username:
             st.error("Username already exists.")
-
-    if st.button("Create Account"):
-        st.session_state.page_history.append(st.session_state.current_page)
-        for i in st.session_state.USERS:
-            if i._username == username:
-                st.error("Username already exists.")
-                return
-        if password == '':
-            st.error("Password cannot be empty.")
-        elif len(password) < 8:
-            st.error("Password must be at least 8 characters long.")
-        elif username == '':
-            st.error("Username cannot be empty.")
-        elif len(username) < 3:
-            st.error("Username must be at least 3 characters long.")
-        else:
-            st.session_state.USERS.append(
-                StandardUser(username, password, role, organization, email, st.session_state.DEFAULT_SCHEDULE))
-            st.success("Account Created Successfully!")
-            time.sleep(1.5)
-            st.success("Redirecting to login page...")
+    if st.session_state.create_account_otp is None:
+        if st.button("Send OTP"):
+            st.session_state.create_account_otp = random.randint(1000, 9999)
+            print(st.session_state.create_account_otp)
+            send_otp(username, st.session_state.create_account_otp, username + '@msu.edu', create_account=True)
+            st.success(f"An OTP has been sent to your email address: {st.session_state.create_account_otp}")
             time.sleep(1)
-            st.session_state.page_history.append(st.session_state.current_page)
-            st.session_state.current_page = 'login'
             st.rerun()
+    else:
+        otp = st.text_input("Enter OTP")
+        if st.button("Create Account"):
+            st.session_state.page_history.append(st.session_state.current_page)
+            for i in st.session_state.USERS:
+                if i._username == username:
+                    st.error("Username already exists.")
+                    return
+            if password == '':
+                st.error("Password cannot be empty.")
+            elif len(password) < 8:
+                st.error("Password must be at least 8 characters long.")
+            elif username == '':
+                st.error("Username cannot be empty.")
+            elif len(username) < 3:
+                st.error("Username must be at least 3 characters long.")
+            elif otp != str(st.session_state.create_account_otp):
+                st.error("Invalid OTP")
+            else:
+                st.session_state.USERS.append(
+                    StandardUser(username, password, role, organization, 'email', st.session_state.DEFAULT_SCHEDULE))
+                st.success("Account Created Successfully!")
+                time.sleep(1.5)
+                st.success("Redirecting to login page...")
+                time.sleep(1)
+                st.session_state.page_history.append(st.session_state.current_page)
+                st.session_state.current_page = 'login'
+                st.rerun()
 
 
 def forgot_password_page():
@@ -885,16 +902,24 @@ def forgot_password_page():
                 st.error("Invalid OTP")
 
 
-def send_otp(user, otp, mail):
+def send_otp(user, otp, mail, create_account=False):
     senders_name = 'Manan Vyas'
     senders_email = 'timesheet@mananvyas.in'
     receivers_email = mail
-    subject = 'One Time Password (OTP) for Password Reset'
-    content = (f'Hi {user}, \n\n'
-               f'A request to reset your password has been made. Your verification code is: {otp}\n\n\n'
-               f'If you did not request this, please ignore this email.\n\n\n'
-               f'Thanks,\n'
-               f'Your Friendly Neighborhood Spider-man')
+    if create_account:
+        subject = 'One Time Password (OTP) for Account Creation'
+        content = (f'Hi {user}, \n\n'
+                     f'Your verification code is: {otp}\n\n\n'
+                     f'If you did not request this, please ignore this email.\n\n\n'
+                     f'Thanks,\n'
+                     f'Manan')
+    else:
+        subject = 'One Time Password (OTP) for Password Reset'
+        content = (f'Hi {user}, \n\n'
+                   f'A request to reset your password has been made. Your verification code is: {otp}\n\n\n'
+                   f'If you did not request this, please ignore this email.\n\n\n'
+                   f'Thanks,\n'
+                   f'Manan')
 
     requests.post(
         "https://api.mailgun.net/v3/mananvyas.in/messages",
@@ -955,28 +980,32 @@ def edit_default_schedule_page():
                 value = default_schedule[i][0].get_start().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state['user_default_schedule'][f"{i}_from_1"] = st.text_input(f"From", key=f"{i}_from_1", value=value)
+            st.session_state['user_default_schedule'][f"{i}_from_1"] = st.text_input(f"From", key=f"{i}_from_1",
+                                                                                     value=value)
 
         with col3:
             try:
                 value = default_schedule[i][0].get_end().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state['user_default_schedule'][f"{i}_till_1"] = st.text_input(f"Till", key=f"{i}_till_1", value=value)
+            st.session_state['user_default_schedule'][f"{i}_till_1"] = st.text_input(f"Till", key=f"{i}_till_1",
+                                                                                     value=value)
 
         with col4:
             try:
                 value = default_schedule[i][1].get_start().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state['user_default_schedule'][f"{i}_from_2"] = st.text_input(f"From", key=f"{i}_from_2", value=value)
+            st.session_state['user_default_schedule'][f"{i}_from_2"] = st.text_input(f"From", key=f"{i}_from_2",
+                                                                                     value=value)
 
         with col5:
             try:
                 value = default_schedule[i][1].get_end().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state['user_default_schedule'][f"{i}_till_2"] = st.text_input(f"Till", key=f"{i}_till_2", value=value)
+            st.session_state['user_default_schedule'][f"{i}_till_2"] = st.text_input(f"Till", key=f"{i}_till_2",
+                                                                                     value=value)
 
         # print(st.session_state['user_default_schedule'])
 
@@ -986,16 +1015,18 @@ def edit_default_schedule_page():
             try:
                 total_hours = 0
                 # get total hours from the values entered (session state)
-                if st.session_state['user_default_schedule'][f"{i}_from_1"] != '' and st.session_state['user_default_schedule'][
-                    f"{i}_till_1"] != '':
+                if st.session_state['user_default_schedule'][f"{i}_from_1"] != '' and \
+                        st.session_state['user_default_schedule'][
+                            f"{i}_till_1"] != '':
                     start_time_1 = st.session_state['user_default_schedule'][f"{i}_from_1"]
                     start_time_1 = datetime.datetime.strptime(start_time_1, '%H:%M')
                     end_time_1 = st.session_state['user_default_schedule'][f"{i}_till_1"]
                     end_time_1 = datetime.datetime.strptime(end_time_1, '%H:%M')
                     total_hours = round(((end_time_1 - start_time_1).seconds / 3600), 1)
 
-                if st.session_state['user_default_schedule'][f"{i}_from_2"] != '' and st.session_state['user_default_schedule'][
-                    f"{i}_till_2"] != '':
+                if st.session_state['user_default_schedule'][f"{i}_from_2"] != '' and \
+                        st.session_state['user_default_schedule'][
+                            f"{i}_till_2"] != '':
                     start_time_2 = st.session_state['user_default_schedule'][f"{i}_from_2"]
                     start_time_2 = datetime.datetime.strptime(start_time_2, '%H:%M')
                     end_time_2 = st.session_state['user_default_schedule'][f"{i}_till_2"]
@@ -1034,23 +1065,35 @@ def edit_default_schedule_page():
 
     # validate the timesheet
     for day in days:
-        if st.session_state['user_default_schedule'][f"{day}_from_1"] != '' and st.session_state['user_default_schedule'][f"{day}_till_1"] != '':
-            if st.session_state['user_default_schedule'][f"{day}_from_1"] > st.session_state['user_default_schedule'][f"{day}_till_1"]:
+        if st.session_state['user_default_schedule'][f"{day}_from_1"] != '' and \
+                st.session_state['user_default_schedule'][f"{day}_till_1"] != '':
+            if st.session_state['user_default_schedule'][f"{day}_from_1"] > st.session_state['user_default_schedule'][
+                f"{day}_till_1"]:
                 st.error(f"Invalid times for {day}. Start time must be before end time.")
-        if st.session_state['user_default_schedule'][f"{day}_from_2"] != '' and st.session_state['user_default_schedule'][f"{day}_till_2"] != '':
-            if st.session_state['user_default_schedule'][f"{day}_from_2"] > st.session_state['user_default_schedule'][f"{day}_till_2"]:
+        if st.session_state['user_default_schedule'][f"{day}_from_2"] != '' and \
+                st.session_state['user_default_schedule'][f"{day}_till_2"] != '':
+            if st.session_state['user_default_schedule'][f"{day}_from_2"] > st.session_state['user_default_schedule'][
+                f"{day}_till_2"]:
                 st.error(f"Invalid times for {day}. Start time must be before end time.")
 
         # check for invalid format
-        if len(st.session_state['user_default_schedule'][f"{day}_from_1"]) != 5 and st.session_state['user_default_schedule'][f"{day}_from_1"] != '':
+        if len(st.session_state['user_default_schedule'][f"{day}_from_1"]) != 5 and \
+                st.session_state['user_default_schedule'][f"{day}_from_1"] != '':
             st.error("Invalid format.")
-        elif ':' not in st.session_state['user_default_schedule'][f"{day}_from_1"] and st.session_state['user_default_schedule'][f"{day}_from_1"] != '':
+        elif ':' not in st.session_state['user_default_schedule'][f"{day}_from_1"] and \
+                st.session_state['user_default_schedule'][f"{day}_from_1"] != '':
             st.error("Invalid format.")
 
         # check for overlapping times
-        if st.session_state['user_default_schedule'][f"{day}_from_1"] != '' and st.session_state['user_default_schedule'][f"{day}_till_1"] != '' and st.session_state['user_default_schedule'][f"{day}_from_2"] != '' and st.session_state['user_default_schedule'][f"{day}_till_2"] != '':
-            if st.session_state['user_default_schedule'][f"{day}_from_1"] < st.session_state['user_default_schedule'][f"{day}_till_1"] and st.session_state['user_default_schedule'][f"{day}_from_2"] < st.session_state['user_default_schedule'][f"{day}_till_2"]:
-                if st.session_state['user_default_schedule'][f"{day}_till_1"] > st.session_state['user_default_schedule'][f"{day}_from_2"]:
+        if st.session_state['user_default_schedule'][f"{day}_from_1"] != '' and \
+                st.session_state['user_default_schedule'][f"{day}_till_1"] != '' and \
+                st.session_state['user_default_schedule'][f"{day}_from_2"] != '' and \
+                st.session_state['user_default_schedule'][f"{day}_till_2"] != '':
+            if st.session_state['user_default_schedule'][f"{day}_from_1"] < st.session_state['user_default_schedule'][
+                f"{day}_till_1"] and st.session_state['user_default_schedule'][f"{day}_from_2"] < \
+                    st.session_state['user_default_schedule'][f"{day}_till_2"]:
+                if st.session_state['user_default_schedule'][f"{day}_till_1"] > \
+                        st.session_state['user_default_schedule'][f"{day}_from_2"]:
                     st.error(f"Overlapping times for {day}.")
 
     if st.button("Save Changes"):
@@ -1120,18 +1163,24 @@ def edit_profile_page():
 
     with col1:
         fname = st.text_input("First Name", value=user._fname)
-        lname = st.text_input("Last Name", value=user._lname)
-        photo_link = st.text_input("Photo URL", value=user._photo, help="Go to ASN website -> About -> People -> Right click on your photo -> Copy Image Address -> Paste here.")
+        phone = st.text_input("Phone Number (Optional)", value=user._phone_number)
+        photo_link = st.text_input("Photo URL", value=user._photo,
+                                   help="Go to ASN website -> About -> People -> Right click on your photo -> Copy Image Address -> Paste here.")
     with col2:
-        phone = st.text_input("Phone Number", value=user._phone_number)
-        misc_info = st.text_area("Miscellaneous Information", value=user._miscellaneous)
+        lname = st.text_input("Last Name", value=user._lname)
+        misc_info = st.text_area("Miscellaneous Information", value=user._miscellaneous, height=122)
 
     if st.button("Save Changes"):
-        user._fname = fname
-        user._lname = lname
-        user._photo = photo_link
-        user._phone_number = phone
-        user._miscellaneous = misc_info
+        if fname != '':
+            user._fname = fname
+        if lname != '':
+            user._lname = lname
+        if phone != '':
+            user._phone_number = phone
+        if photo_link != '':
+            user._photo = photo_link
+        if misc_info != '':
+            user._miscellaneous = misc_info
         st.toast("Saving your profile...")
         time.sleep(1)
         st.toast("Done!", icon='🎉')
@@ -1180,7 +1229,7 @@ elif st.session_state.current_page == 'edit_profile':
 # -> Add a dashboard button to all pages (DONE)
 # -> Design the Admin Dashboard (DONE)
 # -> Create Admin Dashboard (in-progress)
-# -> OTP for registration
-# -> Only msu.edu email addresses allowed
+# -> OTP for registration (DONE)
+# -> Only msu.edu email addresses allowed (DONE)
 # -> Only Mae and Julia can be admins
 # -> Use an actual database
