@@ -6,20 +6,40 @@ import hashlib
 
 class StandardUser:
     def __init__(self, username, password, role, organization, email_address, default_schedule=None, timesheets=[]):
-        self.username = username
-        self.password = password
-        self.role = role
-        self.default_schedule = default_schedule if default_schedule else {}
-        self.timesheets = timesheets
-        self.organization = organization
-        self.email_address = email_address
+        self._username = username
+        self._password = password
+        self._role = role
+        self._default_schedule = default_schedule if default_schedule else {}
+        self._timesheets = timesheets
+        self._organization = organization
+        self._email_address = email_address
+        self._fname = None
+        self._lname = None
+        self._photo = None
+        self._miscellaneous = None
+        self._phone_number = None
         # hourly wage (optional) # we can show their total earnings for the pay period
 
     def set_password(self, password):
-        self.password = hashlib.sha256(password.encode()).hexdigest()
+        self._password = hashlib.sha256(password.encode()).hexdigest()
+
+    def set_first_name(self, fname):
+        self._fname = fname
+
+    def set_last_name(self, lname):
+        self._lname = lname
+
+    def set_photo_url(self, photo):
+        self._photo = photo
+
+    def set_miscellaneous(self, misc):
+        self._miscellaneous = misc
+
+    def set_phone_number(self, phone):
+        self._phone_number = phone
 
     def check_password(self, input_password):
-        return self.password == hashlib.sha256(input_password.encode()).hexdigest()
+        return self._password == hashlib.sha256(input_password.encode()).hexdigest()
 
     def submit_timesheet(self, pay_period, timeslots):
         if not isinstance(pay_period, PayPeriod):
@@ -28,29 +48,29 @@ class StandardUser:
         for i in timeslots:
             pay_period.add_timeslot(i)
 
-        self.timesheets.append(pay_period.get_pay_period_and_timesheet())
+        self._timesheets.append(pay_period.get_pay_period_and_timesheet())
 
     def get_timesheet(self, pay_period):
-        for i in self.timesheets:
+        for i in self._timesheets:
             if i['pay_period'] == pay_period:
                 return i['timesheet']
 
     def get_timesheets(self):
-        return self.timesheets
+        return self._timesheets
 
     def get_latest_timesheet_status(self):
         pay_period = self.get_latest_pay_period()
         return pay_period.is_approved
 
     def get_latest_pay_period(self):
-        return self.timesheets[-1]['pay_period']
+        return self._timesheets[-1]['pay_period']
 
     def edit_default_schedule(self, schedule):
-        self.default_schedule = schedule
+        self._default_schedule = schedule
 
     def get_total_hours(self, pay_period):
-        if pay_period in self.timesheets:
-            return self.timesheets[pay_period].get_total_hours()
+        if pay_period in self._timesheets:
+            return self._timesheets[pay_period].get_total_hours()
         else:
             return 0
 
@@ -66,8 +86,8 @@ class StandardUser:
 
         for i in range(14):  # 14 days in a pay period
             day_name = current_date.strftime('%A')
-            if day_name in self.default_schedule:
-                for slot in self.default_schedule[day_name]:
+            if day_name in self._default_schedule:
+                for slot in self._default_schedule[day_name]:
                     new_slot = TimeSlot(current_date.strftime('%m/%d/%y'), slot.get_start().strftime('%H:%M'),
                                         slot.get_end().strftime('%H:%M'))
                     timeslots.append(new_slot)
@@ -76,16 +96,16 @@ class StandardUser:
         self.submit_timesheet(pay_period, timeslots)
 
     def __repr__(self):
-        repr = (f"Username: {self.username}\n"
-                f"Role: {self.role}\n"
-                f"Organization: {self.organization}\n"
-                f"Default Schedule: {self.default_schedule}\n"
-                f"Timesheets: {self.timesheets}\n")
+        repr = (f"Username: {self._username}\n"
+                f"Role: {self._role}\n"
+                f"Organization: {self._organization}\n"
+                f"Default Schedule: {self._default_schedule}\n"
+                f"Timesheets: {self._timesheets}\n")
         return repr
 
     def serialize_schedule(self):
         serialized_schedule = {day: [slot.serialize() for slot in slots]
-                               for day, slots in self.default_schedule.items()}
+                               for day, slots in self._default_schedule.items()}
         return serialized_schedule
 
     @staticmethod
@@ -96,23 +116,23 @@ class StandardUser:
 
     def serialize(self):
         serialized_schedule = {day: [slot.serialize() for slot in slots]
-                               for day, slots in self.default_schedule.items()}
+                               for day, slots in self._default_schedule.items()}
         serialized_timesheets = []
 
-        for timesheet in self.timesheets:
+        for timesheet in self._timesheets:
             serialized_timesheets.append({
                 'pay_period': timesheet['pay_period'],
                 'timesheet': {date: [slot.serialize() for slot in slots] for date, slots in timesheet['timesheet'].items()}
             })
 
         return {
-            'username': self.username,
-            'password': self.password,
-            'role': self.role,
-            'organization': self.organization,
+            'username': self._username,
+            'password': self._password,
+            'role': self._role,
+            'organization': self._organization,
             'default_schedule': serialized_schedule,
             'timesheets': serialized_timesheets,
-            'email_address': self.email_address
+            'email_address': self._email_address
         }
 
     @staticmethod
@@ -144,19 +164,19 @@ default_schedule = {
         'Saturday': []
     }
 
-user = StandardUser('johndoe', 'password123', 'employee', 'company','vyasmana@msu.edu', default_schedule)
-# print(user)
-print('------------------')
-# print(user.serialize())
-
-first_pay_period = PayPeriod('01/01/23')
-
-user.submit_default_schedule(first_pay_period)
-
-# print(user)
+# user = StandardUser('johndoe', 'password123', 'employee', 'company','vyasmana@msu.edu', default_schedule)
+# # print(user)
+# print('------------------')
+# # print(user.serialize())
 #
-# print(user.timesheets)
-print(user.get_latest_timesheet_status())
+# first_pay_period = PayPeriod('01/01/23')
+#
+# user.submit_default_schedule(first_pay_period)
+#
+# # print(user)
+# #
+# # print(user.timesheets)
+# print(user.get_latest_timesheet_status())
 
 # print(first_pay_period.is_approved)
 

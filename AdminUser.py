@@ -8,8 +8,8 @@ class AdminUser(StandardUser):
         super().__init__(username, password, role, organization)
 
     def approve_timesheet(self, user, pay_period):
-        if pay_period in user.timesheets:
-            user.timesheets[pay_period].is_approved = 'approved'
+        if pay_period in user._timesheets:
+            user._timesheets[pay_period].is_approved = 'approved'
         else:
             raise ValueError("Pay period not found in user timesheets.")
 
@@ -17,8 +17,8 @@ class AdminUser(StandardUser):
         return user.get_timesheets()
 
     def view_last_x_pay_periods(self, user, x):
-        sorted_periods = sorted(user.timesheets.keys(), key=lambda pp: pp._start, reverse=True)
-        return {pp: user.timesheets[pp] for pp in sorted_periods[:x]}
+        sorted_periods = sorted(user._timesheets.keys(), key=lambda pp: pp._start, reverse=True)
+        return {pp: user._timesheets[pp] for pp in sorted_periods[:x]}
 
 
 # default_schedule = {

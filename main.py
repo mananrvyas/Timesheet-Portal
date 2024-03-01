@@ -54,9 +54,9 @@ if 'DEFAULT_SCHEDULE' not in st.session_state:
 
 if 'USERS' not in st.session_state:
     st.session_state.USERS = [
-        StandardUser('Mae', hashlib.sha256('admin'.encode()).hexdigest(), 'admin', 'MSU', 'admin@msu.edu'
+        StandardUser('plattem', hashlib.sha256('admin'.encode()).hexdigest(), 'admin', 'MSU', 'admin@msu.edu'
                      , st.session_state.DEFAULT_SCHEDULE),
-        StandardUser('Manan', hashlib.sha256('Manan'.encode()).hexdigest(), 'user', 'MSU', 'vyasmana@msu.edu',
+        StandardUser('vyasmana', hashlib.sha256('Manan'.encode()).hexdigest(), 'user', 'MSU', 'vyasmana@msu.edu',
                      st.session_state.DEFAULT_SCHEDULE)]
 
 if 'current_page' not in st.session_state:
@@ -108,15 +108,15 @@ def login_page():
         # Authenticate user
         user = None
         for i in st.session_state.USERS:
-            if i.username == username and i.password == hashed_pwd:
+            if i._username == username and i._password == hashed_pwd:
                 user = i
                 break
 
         if user:
-            st.session_state.user_info = {'username': user.username, 'role': user.role}  # Save user info
-            if user.role == 'admin':
+            st.session_state.user_info = {'username': user._username, 'role': user._role}  # Save user info
+            if user._role == 'admin':
                 st.session_state.page_history.append(st.session_state.current_page)
-                st.session_state.current_page = 'admin_dashboard'
+                st.session_state.current_page = 'dashboard'
             else:
                 st.session_state.page_history.append(st.session_state.current_page)
                 st.session_state.current_page = 'dashboard'
@@ -151,7 +151,7 @@ def admin_dashboard_page():
     col1, col2, col3, col4 = st.columns(4)
 
     dummy_list = [f'dummy_{i}' for i in range(1, 13)]
-    user_list = [i.username for i in st.session_state.USERS]
+    user_list = [i._username for i in st.session_state.USERS]
 
     for i in range(0, 12):
         try:
@@ -206,7 +206,7 @@ def admin_dashboard_page():
 
     try:
         for i in st.session_state.USERS:
-            if i.username == st.session_state.admin_selected_user:
+            if i._username == st.session_state.admin_selected_user:
                 admin_selected_user = i
                 break
     except:
@@ -224,7 +224,7 @@ def admin_dashboard_page():
             st.markdown(f"<p class='big-font'> Past time sheets Graph", unsafe_allow_html=True)
 
         with col2:
-            st.markdown(f"<p class='big-font'>{admin_selected_user.username}\'s Notifications</p>",
+            st.markdown(f"<p class='big-font'>{admin_selected_user._username}\'s Notifications</p>",
                         unsafe_allow_html=True)
             st.markdown("""
             <style>
@@ -282,30 +282,45 @@ def dashboard_page():
     st.title("Dashboard")
     user = None
     for i in st.session_state.USERS:
-        if i.username == st.session_state.user_info['username']:
+        if i._username == st.session_state.user_info['username']:
             user = i
             break
     if user is None:
         st.error("User not found. Please contact the administrator (or create an account).")
         return
 
+    if user._role == 'admin':
+        st.session_state.current_page = 'admin_dashboard'
+        st.rerun()
+
     col1, col2 = st.columns(2)
 
     with col1:
-        st.header(user.username)
-        st.image("https://via.placeholder.com/150", width=150)  # Placeholder for user image
-        st.write(f"Name: Manan Vyas")
-        st.write(f"Email: vyasmana@msu.edu")
-        st.write(f"Phone: (517) 980-1536")
-        st.write(f"Town: East Lansing")
+        st.subheader(f'{user._username}')
+        image_url = "https://via.placeholder.com/150"
+        if user._photo:
+            image_url = user._photo
+        try:
+            st.image(image_url, width=150)
+        except:
+            st.image("https://via.placeholder.com/150", width=150)
+
+        if user._fname is None and user._lname is None:
+            st.write("Click on edit profile to add your name.")
+        else:
+            st.write(f"Name: {user._fname} {user._lname}")
+        st.write(f"Email: {user._email_address}")
+        st.write(f"Phone: {user._phone_number}")
+        st.write(f"{user._miscellaneous}")
         if st.button("Edit your profile"):
-            pass
+            st.session_state.current_page = 'edit_profile'
+            st.rerun()
         if st.button("Edit default schedule"):
             st.session_state.current_page = 'edit_default_schedule'
             st.rerun()
 
     with col2:
-        st.header("Timesheets")
+        st.subheader("Timesheets")
         col3, col4 = st.columns(2)
         with col3:
             if st.button("See Past Timesheets"):
@@ -317,7 +332,7 @@ def dashboard_page():
                 st.session_state.page_history.append(st.session_state.current_page)
                 st.session_state.current_page = 'all_timesheets'
                 st.rerun()
-
+        st.write("Here's a graph of your last 5 time sheets")
         timesheet_df = create_timesheet_data()
         timesheet_chart = plot_timesheet_bar_chart(timesheet_df)
         st.pyplot(timesheet_chart)
@@ -325,7 +340,7 @@ def dashboard_page():
         st.write("Timesheet Status:")
         st.markdown("""
         - ![#008000](https://via.placeholder.com/15/008000/000000?text=+) `Approved`
-        - ![#FF0000](https://via.placeholder.com/15/FF0000/000000?text=+) `Rejected`
+        - ![#FF0000](https://via.placeholder.com/15/FF0000/000000?text=+) `Rejected (Highly Unlikely)`
         - ![#0000FF](https://via.placeholder.com/15/0000FF/000000?text=+) `Submitted`
         """, unsafe_allow_html=True)
 
@@ -334,10 +349,28 @@ def past_timesheets_page():
     st.title("Past Timesheets")
     st.write("This is the past timesheets page.")
     st.write("Here, the user can view their past timesheets and some interesting statistics about their work.")
+    if st.button("Back to Dashboard"):
+        st.session_state.current_page = 'dashboard'
+        st.rerun()
 
+
+# https://discuss.streamlit.io/t/hide-fullscreen-option-when-displaying-images-using-st-image/19792
+# no more full screen :)
+hide_img_fs = '''
+<style>
+button[title="View fullscreen"]{
+    visibility: hidden;}
+</style>
+'''
+
+st.markdown(hide_img_fs, unsafe_allow_html=True)
 
 def all_timesheets_page():
     st.title("Submit a Timesheets")
+
+    if st.button("Back to Dashboard"):
+        st.session_state.current_page = 'dashboard'
+        st.rerun()
 
     # show all the timesheets for the user
 
@@ -354,7 +387,7 @@ def all_timesheets_page():
 
     week_start, week_end = get_week_range(st.session_state.current_week)
 
-    col1, col2, col3 = st.columns([1, 5, 1])
+    col1, col2, col3 = st.columns([1, 6, 1])
     with col1:
         if st.button('<<'):
             st.session_state.current_week -= datetime.timedelta(days=14)
@@ -363,7 +396,7 @@ def all_timesheets_page():
             # st.toast("Done!", icon='🎉')
             st.rerun()
     with col2:
-        st.write(f"Timesheet for week: {week_start.strftime('%A %d %b %Y')} - {week_end.strftime('%A %d %b %Y')}")
+        st.subheader(f"{week_start.strftime('%A %d %b %Y')} - {week_end.strftime('%A %d %b %Y')}")
 
     with col3:
         if st.button('\>>'):
@@ -428,12 +461,12 @@ def all_timesheets_page():
     username = st.session_state.user_info['username']
     user = None
     for i in st.session_state.USERS:
-        if i.username == username:
+        if i._username == username:
             user = i
             break
 
     if user is not None:
-        schedule = user.default_schedule
+        schedule = user._default_schedule
     else:
         st.error("User not found. Please contact the administrator (or try logging in again).")
         return
@@ -746,13 +779,13 @@ def signup_page():
     organization = st.text_input("Organization")
 
     for i in st.session_state.USERS:
-        if i.username == username:
+        if i._username == username:
             st.error("Username already exists.")
 
     if st.button("Create Account"):
         st.session_state.page_history.append(st.session_state.current_page)
         for i in st.session_state.USERS:
-            if i.username == username:
+            if i._username == username:
                 st.error("Username already exists.")
                 return
         if password == '':
@@ -793,7 +826,7 @@ def forgot_password_page():
         if username != "":
             user = None
             for i in st.session_state.USERS:
-                if i.username == username:
+                if i._username == username:
                     user = i
                     break
 
@@ -801,11 +834,11 @@ def forgot_password_page():
                 st.error("User not found. Please enter a valid username.")
 
         if email != "" and user is not None:
-            if email != user.email_address:
+            if email != user._email_address:
                 st.error("Email address does not match the username.")
                 # return
 
-        if st.button("Send OTP") and user is not None and email == user.email_address:
+        if st.button("Send OTP") and user is not None and email == user._email_address:
             st.session_state.otp = random.randint(1000, 9999)
             print(st.session_state.otp)
             st.session_state.otp_sent = True
@@ -831,7 +864,7 @@ def forgot_password_page():
                 if new_password == confirm_password:
                     user_index = None
                     for i in st.session_state.USERS:
-                        if i.username == username:
+                        if i._username == username:
                             user_index = st.session_state.USERS.index(i)
                             break
                     if user_index is not None:
@@ -876,7 +909,7 @@ def edit_default_schedule_page():
     # get the user and display their default schedule
     user = None
     for i in st.session_state.USERS:
-        if i.username == st.session_state.user_info['username']:
+        if i._username == st.session_state.user_info['username']:
             user = i
             break
     if user is None:
@@ -884,11 +917,16 @@ def edit_default_schedule_page():
         return
 
     st.title("Edit Default Schedule")
-    st.write("This is your default schedule. You can edit it here.")
-    st.write("Here also, you have to enter the times in 24-hour format (HH\:MM). \n"
+    st.subheader("This is your default schedule. You can edit it here.")
+    st.write("Please enter the times in 24-hour format (HH\:MM). \n"
              "For example, if you work from 9:00 AM to 5:00 PM, enter 09:00 in From and 17:00 in Till")
 
-    default_schedule = user.default_schedule
+    st.write("Changed your mind? Don't want to edit it anymore?")
+    if st.button("Back to Dashboard"):
+        st.session_state.current_page = 'dashboard'
+        st.rerun()
+
+    default_schedule = user._default_schedule
 
     days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
@@ -1043,7 +1081,7 @@ def edit_default_schedule_page():
                         st.error(f"Please enter both start and end times for {day} slot {slot_index}")
                         return
 
-        user.default_schedule = custom_schedule
+        user._default_schedule = custom_schedule
 
         st.toast("Saving the default schedule...")
         time.sleep(1)
@@ -1052,6 +1090,63 @@ def edit_default_schedule_page():
         st.success("Redirecting to dashboard...")
         time.sleep(0.5)
         st.session_state.current_page = 'dashboard'
+        st.rerun()
+
+
+def edit_profile_page():
+    st.title("Edit Profile")
+    st.subheader("You can edit your profile here.")
+    st.write("Changed your mind? Don't want to edit it anymore?")
+    if st.button("Go Back to Dashboard"):
+        st.session_state.current_page = 'dashboard'
+        st.rerun()
+
+    # Edit first name
+    # Edit last name
+    # Edit photo link
+    # Edit Phone Number
+    # Misc. Info (Quote, Bio, etc.)
+
+    col1, col2 = st.columns(2)
+    user = None
+
+    for i in st.session_state.USERS:
+        if i._username == st.session_state.user_info['username']:
+            user = i
+            break
+    if user is None:
+        st.error("User not found. Please contact the administrator (or create an account).")
+        return
+
+    with col1:
+        fname = st.text_input("First Name", value=user._fname)
+        lname = st.text_input("Last Name", value=user._lname)
+        photo_link = st.text_input("Photo URL", value=user._photo, help="Go to ASN website -> About -> People -> Right click on your photo -> Copy Image Address -> Paste here.")
+    with col2:
+        phone = st.text_input("Phone Number", value=user._phone_number)
+        misc_info = st.text_area("Miscellaneous Information", value=user._miscellaneous)
+
+    if st.button("Save Changes"):
+        user._fname = fname
+        user._lname = lname
+        user._photo = photo_link
+        user._phone_number = phone
+        user._miscellaneous = misc_info
+        st.toast("Saving your profile...")
+        time.sleep(1)
+        st.toast("Done!", icon='🎉')
+        time.sleep(0.5)
+        st.success("Redirecting to dashboard...")
+        time.sleep(0.5)
+        st.session_state.current_page = 'dashboard'
+        st.rerun()
+
+    # Edit default schedule
+    st.write("")
+    st.write("")
+    st.write("Want to edit your schedule?")
+    if st.button("Edit Default Schedule"):
+        st.session_state.current_page = 'edit_default_schedule'
         st.rerun()
 
 
@@ -1071,18 +1166,20 @@ elif st.session_state.current_page == 'past_timesheets':
     past_timesheets_page()
 elif st.session_state.current_page == 'edit_default_schedule':
     edit_default_schedule_page()
+elif st.session_state.current_page == 'edit_profile':
+    edit_profile_page()
 
 # Feature to add:
 # -> Cookies
 # -> Mail the timesheet to the admin when user clicks submit
 # -> Send the confirmation email to the user when they submit
 # -> Disable the already submitted time sheets
-# -> Add some more elements in the StandardUser class to display in the dashboard
+# -> Add some more elements in the StandardUser class to display in the dashboard (DONE)
 # -> Add the ability to edit the default schedule (DONE)
-# -> Add a back button to all pages
-# -> Add a dashboard button to all pages
+# -> Add a back button to all pages (NOT NEEDED)
+# -> Add a dashboard button to all pages (DONE)
 # -> Design the Admin Dashboard (DONE)
-# -> Create Admin Dashboard
+# -> Create Admin Dashboard (in-progress)
 # -> OTP for registration
 # -> Only msu.edu email addresses allowed
 # -> Only Mae and Julia can be admins
