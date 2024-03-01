@@ -23,6 +23,10 @@ MAILGUN_API_KEY = os.getenv('MAILGUN_API_KEY')
 
 ADMIN_PIN = os.getenv('ADMIN_PIN')
 
+MAE_NETID = os.getenv('MAE_NETID')
+JULIA_NETID = os.getenv('JULIA_NETID')
+
+
 st.set_page_config(page_title="Timesheet Portal", layout="centered")
 # WHY DOES THIS NOT WORK ARGRGGDGHFJKGHKDFGHKLASDfgIOASUDFRghIOASDFG
 # st.markdown(
@@ -58,6 +62,23 @@ if 'USERS' not in st.session_state:
                      , st.session_state.DEFAULT_SCHEDULE),
         StandardUser('vyasmana', hashlib.sha256('Manan'.encode()).hexdigest(), 'user', 'MSU', 'vyasmana@msu.edu',
                      st.session_state.DEFAULT_SCHEDULE)]
+
+# adding some timesheets to data (to test the dashboard)
+user_manan = st.session_state.USERS[1]
+
+second_pay_period = PayPeriod('01/15/23')
+custom_timeslots = [
+    TimeSlot('01/16/23', '10:00', '15:00'),
+    TimeSlot('01/17/23', '10:00', '15:00'),
+    TimeSlot('01/18/23', '10:00', '15:00'),
+]
+user_manan.submit_timesheet(second_pay_period, custom_timeslots)
+#
+#
+pay_period = PayPeriod('02/11/24')
+user_manan.submit_default_schedule(pay_period)
+pay_period.is_approved = 'approved'
+
 
 if 'current_page' not in st.session_state:
     st.session_state.current_page = 'login'
@@ -242,26 +263,76 @@ def admin_dashboard_page():
                 st.write("Notifications")
 
 
-def create_timesheet_data():
-    # create some dummy data
-    today = datetime.date.today()
-    last_four_sundays = [(today - pd.Timedelta(days=(today.weekday() + 1) % 7 + 7 * i)) for i in range(5)]
-    last_four_sundays = last_four_sundays[::-1]
+def create_timesheet_data(username='vyasmana'):
+    if 'current_week' not in st.session_state:
+        st.session_state.current_week = datetime.date.today()
+    user = None
+    for i in st.session_state.USERS:
+        if i._username == username:
+            user = i
+            break
+
+    if user is None:
+        st.error("User not found. Please contact the administrator (or create an account).")
+        return
+
+    time_sheets = user._timesheets
+
+    last_five_timeshetes = []
+    for i in range(6):
+        if i == 5:
+            break
+        try:
+            last_five_timeshetes.append(time_sheets[i]['pay_period'])
+        except:
+            last_five_timeshetes.append("")
+
+    last_five_pay_periods = []
+    for i in range(6):
+        if i == 5:
+            break
+        try:
+            last_five_pay_periods.append(last_five_timeshetes[i].get_start_date().strftime('%d %b'))
+        except:
+            last_five_pay_periods.append("")
+
+
+    hours = []
+    for i in range(6):
+        if i == 5:
+            break
+        try:
+            hours.append(last_five_timeshetes[i].get_total_hours())
+        except:
+            hours.append(0)
+
+    status = []
+    for i in range(6):
+        if i == 5:
+            break
+        try:
+            status.append(last_five_timeshetes[i].is_approved)
+        except:
+            status.append('pending')
+
     data = {
-        'Date': [date.strftime('%d %b') for date in last_four_sundays],
-        'Hours': [10, 20, 30, 40, 20],
-        'Status': ['Approved', 'Rejected', 'Submitted', 'Approved', 'Submitted']
+        'Date': last_five_pay_periods,
+        'Hours': hours,
+        'Status': status
     }
+
+    print(data)
+
     df = pd.DataFrame(data)
     return df
 
 
 def plot_timesheet_bar_chart(df):
     plt.style.use('dark_background')
-    status_colors = {'Approved': 'green', 'Rejected': 'red', 'Submitted': 'blue'}
+    status_colors = {'approved': 'green', 'rejected': 'red', 'pending': 'blue'}
     colors = df['Status'].map(status_colors)
     fig, ax = plt.subplots()
-    bars = ax.bar(df['Date'], df['Hours'], color=colors, width=0.2)
+    bars = ax.bar(df['Date'], df['Hours'], color=colors, width=0.1)
 
     ax.set_facecolor('#0f1116')
     fig.patch.set_facecolor('#0f1116')
@@ -366,6 +437,15 @@ button[title="View fullscreen"]{
 st.markdown(hide_img_fs, unsafe_allow_html=True)
 
 
+def get_week_range(date):
+    known_start_date = datetime.date(2024, 2, 11)
+    delta = date - known_start_date
+    days_since_last_period_start = delta.days % 14
+    start_date = date - datetime.timedelta(days=days_since_last_period_start)
+    end_date = start_date + datetime.timedelta(days=13)
+    return start_date, end_date
+
+
 def all_timesheets_page():
     st.title("Submit a Timesheets")
 
@@ -374,14 +454,6 @@ def all_timesheets_page():
         st.rerun()
 
     # show all the timesheets for the user
-
-    def get_week_range(date):
-        known_start_date = datetime.date(2024, 2, 11)
-        delta = date - known_start_date
-        days_since_last_period_start = delta.days % 14
-        start_date = date - datetime.timedelta(days=days_since_last_period_start)
-        end_date = start_date + datetime.timedelta(days=13)
-        return start_date, end_date
 
     if 'current_week' not in st.session_state:
         st.session_state.current_week = datetime.date.today()
@@ -716,7 +788,7 @@ def all_timesheets_page():
 
     st.session_state.total_hours = pay_period.get_total_hours()
 
-    print(pretty_print_timesheet(pay_period))
+    # print(pretty_print_timesheet(pay_period))
 
     st.write(f"Total Hours: ", round(st.session_state.total_hours, 1))
 
@@ -768,15 +840,22 @@ def pretty_print_timesheet(pay_period):
 
 def signup_page():
     st.title("Signup Page")
+    st.write("Want to go back to the login page? Click the button below.")
+    if st.button("Login"):
+        st.session_state.current_page = 'login'
+        st.rerun()
     username = st.text_input("Enter your username (should be your NetID)")
     password = st.text_input("Choose a Password", type='password')
     if 8 > len(password) > 0:
         st.error("Password must be at least 8 characters long.")
     role = st.selectbox("Role", ['user', 'admin'])
-    if role == 'admin':
+    if role == 'admin' and username != '':
+        if not (username == MAE_NETID or username == JULIA_NETID):
+            st.error("Only Mae and Julia can sign up as an admin.")
+            return
         admin_pin = st.text_input("Admin PIN", type='password')
         if admin_pin != ADMIN_PIN and admin_pin != '':
-            st.error("Invalid Admin PIN")
+            st.error("Invalid Admin PIN, please refer to your email for the admin PIN.")
             return
 
     organization = st.text_input("Organization")
@@ -907,12 +986,22 @@ def send_otp(user, otp, mail, create_account=False):
     senders_email = 'timesheet@mananvyas.in'
     receivers_email = mail
     if create_account:
-        subject = 'One Time Password (OTP) for Account Creation'
         content = (f'Hi {user}, \n\n'
-                     f'Your verification code is: {otp}\n\n\n'
-                     f'If you did not request this, please ignore this email.\n\n\n'
-                     f'Thanks,\n'
-                     f'Manan')
+                   f'Your verification code is: {otp}\n\n\n'
+                   f'If you did not request this, please ignore this email.\n\n\n')
+        if mail == JULIA_NETID + '@msu.edu':
+            content += (f'Please note that you are signing up as an admin. \n'
+                        f'You will need the admin PIN to complete the sign up process.\n '
+                        f'The admin pin is: {ADMIN_PIN}\n\n\n')
+        if mail == MAE_NETID + '@msu.edu':
+            content += (f'Please note that you are signing up as an admin. \n'
+                        f'You will need the admin PIN to complete the sign up process.\n '
+                        f'The admin pin is: {ADMIN_PIN}\n\n\n')
+
+        content += (f'Thanks,\n'
+                    f'Manan')
+        subject = 'One Time Password (OTP) for Account Creation'
+
     else:
         subject = 'One Time Password (OTP) for Password Reset'
         content = (f'Hi {user}, \n\n'
@@ -943,6 +1032,7 @@ def edit_default_schedule_page():
 
     st.title("Edit Default Schedule")
     st.subheader("This is your default schedule. You can edit it here.")
+    st.write("Your timesheets will be pre-filled with this schedule. You can edit the timesheets later if you want.")
     st.write("Please enter the times in 24-hour format (HH\:MM). \n"
              "For example, if you work from 9:00 AM to 5:00 PM, enter 09:00 in From and 17:00 in Till")
 
@@ -1165,10 +1255,12 @@ def edit_profile_page():
         fname = st.text_input("First Name", value=user._fname)
         phone = st.text_input("Phone Number (Optional)", value=user._phone_number)
         photo_link = st.text_input("Photo URL", value=user._photo,
-                                   help="Go to ASN website -> About -> People -> Right click on your photo -> Copy Image Address -> Paste here.")
+                                   help="Go to ASN website -> About -> People -> Right click on your photo -> "
+                                        "Copy Image Address -> Paste here. (Or upload to imgur and paste the"
+                                        " link here)")
     with col2:
         lname = st.text_input("Last Name", value=user._lname)
-        misc_info = st.text_area("Miscellaneous Information", value=user._miscellaneous, height=122)
+        misc_info = st.text_area("Miscellaneous Information", value=user._miscellaneous, height=122, help="It can be a quote, a short bio, etc.")
 
     if st.button("Save Changes"):
         if fname != '':
@@ -1219,17 +1311,19 @@ elif st.session_state.current_page == 'edit_profile':
     edit_profile_page()
 
 # Feature to add:
-# -> Cookies
+# -> Actual data in the dashboard (Done)
+# -> Create Admin Dashboard (in-progress)
 # -> Mail the timesheet to the admin when user clicks submit
 # -> Send the confirmation email to the user when they submit
 # -> Disable the already submitted time sheets
+# -> Use an actual database
+# -> Cookies for login
 # -> Add some more elements in the StandardUser class to display in the dashboard (DONE)
 # -> Add the ability to edit the default schedule (DONE)
 # -> Add a back button to all pages (NOT NEEDED)
 # -> Add a dashboard button to all pages (DONE)
 # -> Design the Admin Dashboard (DONE)
-# -> Create Admin Dashboard (in-progress)
 # -> OTP for registration (DONE)
 # -> Only msu.edu email addresses allowed (DONE)
-# -> Only Mae and Julia can be admins
-# -> Use an actual database
+# -> Only Mae and Julia can be admins (DONE)
+
