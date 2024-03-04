@@ -33,12 +33,18 @@ class PayPeriod:
             self._timesheet[date] = [timeslot]
         else:
             for i in self._timesheet[date]:
-                if i != timeslot:
-                    # raise ValueError("Timeslot already exists")
+                if i == timeslot:
+                    continue
+                else:
                     self._timesheet[date].append(timeslot)
 
     def get_timesheet_by_date(self, date):
         return self._timesheet.get(date, None)
+
+    def __eq__(self, other):
+        if not isinstance(other, PayPeriod):
+            return NotImplemented
+        return (self._start, self._end, self._timesheet) == (other._start, other._end, other._timesheet)
 
     def get_timesheet_by_pay_period(self):
         return self._timesheet
@@ -48,6 +54,8 @@ class PayPeriod:
         for date in self._timesheet:
             for timeslot in self._timesheet[date]:
                 total_hours += timeslot.duration()
+        # print("Timesheet from payperiod class")
+        # print(self._timesheet)
         return total_hours
 
     def get_start_date(self):
@@ -61,7 +69,7 @@ class PayPeriod:
 
     def __repr__(self):
         # start, end, timesheet
-        return f"{self._start.strftime('%m/%d/%y')}"
+        return f"{self._start.strftime('%m/%d/%y'), self._end.strftime('%m/%d/%y'), self._timesheet}"
 
     def get_pay_period_and_timesheet(self):
         return {'pay_period': self, 'timesheet': self._timesheet}

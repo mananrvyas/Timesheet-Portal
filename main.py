@@ -48,11 +48,11 @@ st.set_page_config(page_title="Timesheet Portal", layout="centered")
 if 'DEFAULT_SCHEDULE' not in st.session_state:
     st.session_state.DEFAULT_SCHEDULE = {
         'Sunday': [],
-        'Monday': [TimeSlot('01/03/23', '09:00', '11:00'), TimeSlot('01/03/23', '13:00', '17:00')],
-        'Tuesday': [TimeSlot('01/04/23', '09:10', '12:00'), TimeSlot('01/04/23', '14:00', '17:00')],
-        'Wednesday': [TimeSlot('01/05/23', '09:50', '12:00'), TimeSlot('01/05/23', '15:00', '17:00')],
-        'Thursday': [TimeSlot('01/06/23', '09:40', '12:00'), TimeSlot('01/06/23', '16:00', '17:00')],
-        'Friday': [TimeSlot('01/07/23', '09:30', '12:00'), TimeSlot('01/07/23', '16:30', '17:00')],
+        'Monday': [TimeSlot('01/03/23', '09:00', '11:00'), TimeSlot('01/03/23', '13:00', '14:00')],
+        'Tuesday': [TimeSlot('01/04/23', '10:00', '12:00'), TimeSlot('01/04/23', '14:00', '15:00')],
+        'Wednesday': [TimeSlot('01/05/23', '10:50', '11:50'), TimeSlot('01/05/23', '15:00', '16:00')],
+        'Thursday': [TimeSlot('01/06/23', '09:40', '12:40'), TimeSlot('01/06/23', '16:00', '17:00')],
+        'Friday': [TimeSlot('01/07/23', '09:30', '10:30'), TimeSlot('01/07/23', '17:00', '18:00')],
         'Saturday': []
     }
 
@@ -63,21 +63,21 @@ if 'USERS' not in st.session_state:
         StandardUser('vyasmana', hashlib.sha256('Manan'.encode()).hexdigest(), 'user', 'MSU', 'vyasmana@msu.edu',
                      st.session_state.DEFAULT_SCHEDULE)]
 
-# adding some timesheets to data (to test the dashboard)
-user_manan = st.session_state.USERS[1]
-
-second_pay_period = PayPeriod('01/15/23')
-custom_timeslots = [
-    TimeSlot('01/16/23', '10:00', '15:00'),
-    TimeSlot('01/17/23', '10:00', '15:00'),
-    TimeSlot('01/18/23', '10:00', '15:00'),
-]
-user_manan.submit_timesheet(second_pay_period, custom_timeslots)
+# # adding some timesheets to data (to test the dashboard)
+# user_manan = st.session_state.USERS[1]
 #
-#
-pay_period = PayPeriod('02/11/24')
-user_manan.submit_default_schedule(pay_period)
-pay_period.is_approved = 'approved'
+# second_pay_period = PayPeriod('01/15/23')
+# custom_timeslots = [
+#     TimeSlot('01/16/23', '10:00', '15:00'),
+#     TimeSlot('01/17/23', '10:00', '15:00'),
+#     TimeSlot('01/18/23', '10:00', '15:00'),
+# ]
+# user_manan.submit_timesheet(second_pay_period, custom_timeslots)
+# #
+# #
+# pay_period = PayPeriod('02/11/24')
+# user_manan.submit_default_schedule(pay_period)
+# pay_period.is_approved = 'approved'
 
 
 if 'current_page' not in st.session_state:
@@ -296,7 +296,6 @@ def create_timesheet_data(username='vyasmana'):
         except:
             last_five_pay_periods.append("")
 
-
     hours = []
     for i in range(6):
         if i == 5:
@@ -340,7 +339,7 @@ def plot_timesheet_bar_chart(df):
     ax.set_ylabel('Hours', fontsize=12, color='white')
     ax.tick_params(axis='x', colors='white')
     ax.tick_params(axis='y', colors='white')
-    ax.set_ylim(0, 40)
+    ax.set_ylim(0, 80)
     ax.set_title('Timesheets', fontsize=14, color='white')
 
     ax.xaxis.labelpad = 15
@@ -486,43 +485,43 @@ def all_timesheets_page():
 
     st.write("")
 
-    x, y = st.columns([1, 2])
+    # x, y = st.columns([1, 2])
 
     days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-    with x:
-        st.write("")
-        if st.button("Submit Without Any Changes"):
-            # cool random animation :)
-            # if not not random.getrandbits(1):
-            #     st.snow()
-            #     time.sleep(4)
-            # else:
-            #     st.balloons()
-            #     time.sleep(3)
-            st.toast("Saving the timesheet...")
-            time.sleep(1)
-            st.toast("Mailing it to Mae and Julia...")
-            time.sleep(1)
-            st.toast("Done!", icon='🎉')
-            # time.sleep(0.5)
-            st.success("Timesheet submitted successfully!")
-            time.sleep(0.8)
-            for day in days:
-                print(day, '\n', st.session_state[day][f"1_{day}_from_1"], ' to ',
-                      st.session_state[day][f"1_{day}_till_1"],
-                      '\n', st.session_state[day][f"1_{day}_from_2"], ' to ', st.session_state[day][f"1_{day}_till_2"])
-
-                print(day, '\n', st.session_state[day][f"2_{day}_from_1"], ' to ',
-                      st.session_state[day][f"2_{day}_till_1"],
-                      '\n', st.session_state[day][f"2_{day}_from_2"], ' to ', st.session_state[day][f"2_{day}_till_2"])
-            st.success("Redirecting to dashboard...")
-            time.sleep(1)
-            st.session_state.current_page = 'dashboard'
-            st.rerun()
-    with y:
-        st.write("This will submit the timesheet with the default schedule."
-                 " If you want to make changes, please do so before submitting."
-                 " There's another submit button at the bottom of the page. Scroll down for total hours")
+    # with x:
+    #     st.write("")
+    #     if st.button("Submit Without Any Changes"):
+    #         # cool random animation :)
+    #         # if not not random.getrandbits(1):
+    #         #     st.snow()
+    #         #     time.sleep(4)
+    #         # else:
+    #         #     st.balloons()
+    #         #     time.sleep(3)
+    #         st.toast("Saving the timesheet...")
+    #         time.sleep(1)
+    #         st.toast("Mailing it to Mae and Julia...")
+    #         time.sleep(1)
+    #         st.toast("Done!", icon='🎉')
+    #         # time.sleep(0.5)
+    #         st.success("Timesheet submitted successfully!")
+    #         time.sleep(0.8)
+    #         for day in days:
+    #             print(day, '\n', st.session_state[day][f"1_{day}_from_1"], ' to ',
+    #                   st.session_state[day][f"1_{day}_till_1"],
+    #                   '\n', st.session_state[day][f"1_{day}_from_2"], ' to ', st.session_state[day][f"1_{day}_till_2"])
+    #
+    #             print(day, '\n', st.session_state[day][f"2_{day}_from_1"], ' to ',
+    #                   st.session_state[day][f"2_{day}_till_1"],
+    #                   '\n', st.session_state[day][f"2_{day}_from_2"], ' to ', st.session_state[day][f"2_{day}_till_2"])
+    #         st.success("Redirecting to dashboard...")
+    #         time.sleep(1)
+    #         st.session_state.current_page = 'dashboard'
+    #         st.rerun()
+    # with y:
+    #     st.write("This will submit the timesheet with the default schedule."
+    #              " If you want to make changes, please do so before submitting."
+    #              " There's another submit button at the bottom of the page. Scroll down for total hours")
 
     st.write("")
     st.session_state.total_hours = 0
@@ -749,61 +748,84 @@ def all_timesheets_page():
             if st.session_state[day][f"2_{day}_from_2"] > st.session_state[day][f"2_{day}_till_2"]:
                 st.error(f"Invalid times for {day}. Start time must be before end time.")
 
-    # col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1, 1, 1, 1, 1, 1])
-    #
-    # with col1:
-    #     st.write("Total Hours")
-    #
-    # with col7:
-    #     st.write("0.00")
-
-    # when user clicks submit, print the timesheet
-
-    # calculate the total hours
-
-    pay_period = PayPeriod(week_start.strftime('%m/%d/%y'))
-
     timeslots = []
+    # for i in days:
+    #     print(st.session_state[i][f"1_{i}_from_1"], st.session_state[i][f"1_{i}_till_1"])
+    #     print(st.session_state[i][f"1_{i}_from_2"], st.session_state[i][f"1_{i}_till_2"])
+    #     print(st.session_state[i][f"2_{i}_from_1"], st.session_state[i][f"2_{i}_till_1"])
+    #     print(st.session_state[i][f"2_{i}_from_2"], st.session_state[i][f"2_{i}_till_2"])
 
     for i, day in enumerate(days):
         if st.session_state[day][f"1_{day}_from_1"] != '' and st.session_state[day][f"1_{day}_till_1"] != '':
-            timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i)).strftime('%m/%d/%y'),
+            zz = (TimeSlot((week_start + datetime.timedelta(days=i)).strftime('%m/%d/%y'),
                                       st.session_state[day][f"1_{day}_from_1"],
                                       st.session_state[day][f"1_{day}_till_1"]))
+            timeslots.append(zz)
+            # print("1st if statement", zz)
+            # print("1st if statement", timeslots)
         if st.session_state[day][f"1_{day}_from_2"] != '' and st.session_state[day][f"1_{day}_till_2"] != '':
-            timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i)).strftime('%m/%d/%y'),
+            zz = (TimeSlot((week_start + datetime.timedelta(days=i)).strftime('%m/%d/%y'),
                                       st.session_state[day][f"1_{day}_from_2"],
                                       st.session_state[day][f"1_{day}_till_2"]))
+            timeslots.append(zz)
+            # print("2nd if statement", zz)
+            # print("2nd if statement", timeslots)
         if st.session_state[day][f"2_{day}_from_1"] != '' and st.session_state[day][f"2_{day}_till_1"] != '':
-            timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i + 7)).strftime('%m/%d/%y'),
+            zz = (TimeSlot((week_start + datetime.timedelta(days=i + 7)).strftime('%m/%d/%y'),
                                       st.session_state[day][f"2_{day}_from_1"],
                                       st.session_state[day][f"2_{day}_till_1"]))
+            timeslots.append(zz)
+            # print("3rd if statement", zz)
+            # print("3rd if statement", timeslots)
         if st.session_state[day][f"2_{day}_from_2"] != '' and st.session_state[day][f"2_{day}_till_2"] != '':
-            timeslots.append(TimeSlot((week_start + datetime.timedelta(days=i + 7)).strftime('%m/%d/%y'),
+            zz = (TimeSlot((week_start + datetime.timedelta(days=i + 7)).strftime('%m/%d/%y'),
                                       st.session_state[day][f"2_{day}_from_2"],
                                       st.session_state[day][f"2_{day}_till_2"]))
+            timeslots.append(zz)
+            # print("4th if statement", zz)
+
+    # print("END OF FOR LOOP")
+
+            # print("4th if statement", timeslots)
+
+    # for i in range(len(days)):
+    #     if st.
+
+    # for i in timeslots:
+    #     print(i)
+
+    pay_period = PayPeriod(week_start.strftime('%m/%d/%y'))
 
     for i in timeslots:
         pay_period.add_timeslot(i)
-
     st.session_state.total_hours = pay_period.get_total_hours()
+
+    pay_period = PayPeriod(week_start.strftime('%m/%d/%y'))
+    #     # print(i)
+
+    # print("The for loop")
+    # for i in range(14):
+    #     print(pay_period.get_timesheet_by_date((week_start + datetime.timedelta(days=i)).strftime('%m/%d/%y')))
+
+
+
+    # print(pay_period.get_timesheet_by_pay_period())
 
     # print(pretty_print_timesheet(pay_period))
 
     st.write(f"Total Hours: ", round(st.session_state.total_hours, 1))
 
+    # print("Before submitting the timesheet", pay_period.get_total_hours())
+
     if st.button("Submit"):
         # Converting the timesheet to a list of TimeSlot objects with pay period
 
-        print(pay_period.get_timesheet_by_pay_period())
+        user.submit_timesheet(pay_period, timeslots)
+        # print("After submitting the timesheet", user._timesheets[-1]['pay_period'].get_total_hours())
 
-        # cool random animation :)
-        # if not not random.getrandbits(1):
-        #     st.snow()
-        #     time.sleep(4)
-        # else:
-        #     st.balloons()
-        #     time.sleep(3)
+        #
+        # print(pretty_print_timesheet(user._timesheets[-1]['pay_period']))
+        # print(user._timesheets[-1]['pay_period'].get_total_hours())
 
         st.toast("Saving the timesheet...")
         time.sleep(1)
@@ -815,8 +837,8 @@ def all_timesheets_page():
         time.sleep(0.8)
         st.success("Redirecting to dashboard...")
         time.sleep(1)
-        # st.session_state.current_page = 'dashboard'
-        # st.rerun()
+        st.session_state.current_page = 'dashboard'
+        st.rerun()
 
 
 def pretty_print_timesheet(pay_period):
@@ -1311,7 +1333,6 @@ elif st.session_state.current_page == 'edit_profile':
     edit_profile_page()
 
 # Feature to add:
-# -> Actual data in the dashboard (Done)
 # -> Create Admin Dashboard (in-progress)
 # -> Mail the timesheet to the admin when user clicks submit
 # -> Send the confirmation email to the user when they submit
@@ -1326,4 +1347,4 @@ elif st.session_state.current_page == 'edit_profile':
 # -> OTP for registration (DONE)
 # -> Only msu.edu email addresses allowed (DONE)
 # -> Only Mae and Julia can be admins (DONE)
-
+# -> Actual data in the dashboard (Done)

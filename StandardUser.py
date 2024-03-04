@@ -2,6 +2,8 @@ from PayPeriod import PayPeriod
 from TimeSlot import TimeSlot
 from datetime import datetime, timedelta, date
 import hashlib
+
+
 # import pandas as pd
 # import matplotlib.pyplot as plt
 
@@ -51,8 +53,8 @@ class StandardUser:
 
         # check if pay period is already in timesheets
         for i in self._timesheets:
-            if i['pay_period'] == pay_period:
-                raise ValueError("Pay period already exists")
+            if i['pay_period'].get_start_date() == pay_period.get_start_date():
+                raise ValueError("You've already submitted a timesheet for this pay period.")
 
         self._timesheets.append(pay_period.get_pay_period_and_timesheet())
 
@@ -128,7 +130,8 @@ class StandardUser:
         for timesheet in self._timesheets:
             serialized_timesheets.append({
                 'pay_period': timesheet['pay_period'],
-                'timesheet': {date: [slot.serialize() for slot in slots] for date, slots in timesheet['timesheet'].items()}
+                'timesheet': {date: [slot.serialize() for slot in slots] for date, slots in
+                              timesheet['timesheet'].items()}
             })
 
         return {
@@ -154,26 +157,41 @@ class StandardUser:
         for timesheet in user['timesheets']:
             deserialized_timesheets.append({
                 'pay_period': timesheet['pay_period'],
-                'timesheet': {date: [TimeSlot.deserialize(slot) for slot in slots] for date, slots in timesheet['timesheet'].items()}
+                'timesheet': {date: [TimeSlot.deserialize(slot) for slot in slots] for date, slots in
+                              timesheet['timesheet'].items()}
             })
 
-        return StandardUser(user['username'], user['password'], user['role'], user['organization'], user['email_address'],
+        return StandardUser(user['username'], user['password'], user['role'], user['organization'],
+                            user['email_address'],
                             deserialized_schedule, deserialized_timesheets)
 
-#
+
 # DEFAULT_SCHEDULE = {
 #         'Sunday': [],
-#         'Monday': [TimeSlot('01/03/23', '09:00', '11:00'), TimeSlot('01/03/23', '13:00', '17:00')],
-#         'Tuesday': [TimeSlot('01/04/23', '09:10', '12:00'), TimeSlot('01/04/23', '14:00', '17:00')],
-#         'Wednesday': [TimeSlot('01/05/23', '09:50', '12:00'), TimeSlot('01/05/23', '15:00', '17:00')],
-#         'Thursday': [TimeSlot('01/06/23', '09:40', '12:00'), TimeSlot('01/06/23', '16:00', '17:00')],
-#         'Friday': [TimeSlot('01/07/23', '09:30', '12:00'), TimeSlot('01/07/23', '16:30', '17:00')],
+#         'Monday': [TimeSlot('01/03/23', '09:00', '11:00'), TimeSlot('01/03/23', '13:00', '14:00')],
+#         'Tuesday': [TimeSlot('01/04/23', '10:00', '12:00'), TimeSlot('01/04/23', '14:00', '15:00')],
+#         'Wednesday': [TimeSlot('01/05/23', '10:50', '11:50'), TimeSlot('01/05/23', '15:00', '16:00')],
+#         'Thursday': [TimeSlot('01/06/23', '09:40', '12:40'), TimeSlot('01/06/23', '16:00', '17:00')],
+#         'Friday': [TimeSlot('01/07/23', '09:30', '10:30'), TimeSlot('01/07/23', '17:00', '18:00')],
 #         'Saturday': []
 #     }
 #
+# # #
 # user = StandardUser('vyasmana', hashlib.sha256('Manan'.encode()).hexdigest(), 'user', 'MSU', 'vyasmana@msu.edu',
-#                      DEFAULT_SCHEDULE)
+#                     DEFAULT_SCHEDULE)
 #
+# pay_period = PayPeriod('01/01/23')
+#
+# user.submit_default_schedule(pay_period)
+#
+# print(user._timesheets[-1]['pay_period'].get_total_hours())
+
+
+
+#
+# print(user._timesheets)
+#
+
 #
 #
 #
@@ -282,8 +300,6 @@ class StandardUser:
 # plt.show()
 
 
-
-
 #
 # default_schedule = {
 #         'Sunday': [],
@@ -374,4 +390,3 @@ class StandardUser:
 # for i in user.get_timesheets():
 #     print(i)
 #     # print("\n\n\n")
-
