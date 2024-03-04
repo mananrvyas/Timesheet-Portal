@@ -523,7 +523,6 @@ def all_timesheets_page():
     #              " If you want to make changes, please do so before submitting."
     #              " There's another submit button at the bottom of the page. Scroll down for total hours")
 
-    st.write("")
     st.session_state.total_hours = 0
 
     for day in days:
@@ -543,6 +542,16 @@ def all_timesheets_page():
         st.error("User not found. Please contact the administrator (or try logging in again).")
         return
 
+    # pay_period = PayPeriod(week_start.strftime('%m/%d/%y'))
+
+    disabled = False
+
+    for i in user._timesheets:
+        if i['pay_period'].get_start_date().strftime('%m/%d/%y') == week_start.strftime('%m/%d/%y'):
+            disabled = True
+            st.write("You have already submitted a timesheet for this week. You cannot make any changes.")
+            break
+
     for i, day in enumerate(days):
         col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 1, 1, 1, 1, 1, 1])
         with col1:
@@ -561,7 +570,7 @@ def all_timesheets_page():
                 value = schedule[day][0].get_start().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"1_{day}_from_1"] = st.text_input(f"From", key=f"1_{day}_from_1", value=value)
+            st.session_state[day][f"1_{day}_from_1"] = st.text_input(f"From", key=f"1_{day}_from_1", value=value, disabled=disabled)
             if len(st.session_state[day][f"1_{day}_from_1"]) != 5 and st.session_state[day][f"1_{day}_from_1"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"1_{day}_from_1"] and st.session_state[day][f"1_{day}_from_1"] != '':
@@ -577,7 +586,7 @@ def all_timesheets_page():
                 value = schedule[day][0].get_end().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"1_{day}_till_1"] = st.text_input(f"Till", key=f"1_{day}_till_1", value=value)
+            st.session_state[day][f"1_{day}_till_1"] = st.text_input(f"Till", key=f"1_{day}_till_1", value=value, disabled=disabled)
             if len(st.session_state[day][f"1_{day}_till_1"]) != 5 and st.session_state[day][f"1_{day}_till_1"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"1_{day}_till_1"] and st.session_state[day][f"1_{day}_till_1"] != '':
@@ -593,7 +602,7 @@ def all_timesheets_page():
                 value = schedule[day][1].get_start().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"1_{day}_from_2"] = st.text_input(f"From", key=f"1_{day}_from_2", value=value)
+            st.session_state[day][f"1_{day}_from_2"] = st.text_input(f"From", key=f"1_{day}_from_2", value=value, disabled=disabled)
             if len(st.session_state[day][f"1_{day}_from_2"]) != 5 and st.session_state[day][f"1_{day}_from_2"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"1_{day}_from_2"] and st.session_state[day][f"1_{day}_from_2"] != '':
@@ -609,7 +618,7 @@ def all_timesheets_page():
                 value = schedule[day][1].get_end().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"1_{day}_till_2"] = st.text_input(f"Till", key=f"1_{day}_till_2", value=value)
+            st.session_state[day][f"1_{day}_till_2"] = st.text_input(f"Till", key=f"1_{day}_till_2", value=value, disabled=disabled)
             if len(st.session_state[day][f"1_{day}_till_2"]) != 5 and st.session_state[day][f"1_{day}_till_2"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"1_{day}_till_2"] and st.session_state[day][f"1_{day}_till_2"] != '':
@@ -664,7 +673,7 @@ def all_timesheets_page():
                 value = schedule[day][0].get_start().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"2_{day}_from_1"] = st.text_input(f"From", key=f"2_{day}_from_1", value=value)
+            st.session_state[day][f"2_{day}_from_1"] = st.text_input(f"From", key=f"2_{day}_from_1", value=value, disabled=disabled)
             if len(st.session_state[day][f"2_{day}_from_1"]) != 5 and st.session_state[day][f"2_{day}_from_1"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"2_{day}_from_1"] and st.session_state[day][f"2_{day}_from_1"] != '':
@@ -681,7 +690,7 @@ def all_timesheets_page():
                 value = schedule[day][0].get_end().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"2_{day}_till_1"] = st.text_input(f"Till", key=f"2_{day}_till_1", value=value)
+            st.session_state[day][f"2_{day}_till_1"] = st.text_input(f"Till", key=f"2_{day}_till_1", value=value, disabled=disabled)
             if len(st.session_state[day][f"2_{day}_till_1"]) != 5 and st.session_state[day][f"2_{day}_till_1"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"2_{day}_till_1"] and st.session_state[day][f"2_{day}_till_1"] != '':
@@ -697,7 +706,7 @@ def all_timesheets_page():
                 value = schedule[day][1].get_start().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"2_{day}_from_2"] = st.text_input(f"From", key=f"2_{day}_from_2", value=value)
+            st.session_state[day][f"2_{day}_from_2"] = st.text_input(f"From", key=f"2_{day}_from_2", value=value, disabled=disabled)
             if len(st.session_state[day][f"2_{day}_from_2"]) != 5 and st.session_state[day][f"2_{day}_from_2"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"2_{day}_from_2"] and st.session_state[day][f"2_{day}_from_2"] != '':
@@ -713,7 +722,7 @@ def all_timesheets_page():
                 value = schedule[day][1].get_end().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"2_{day}_till_2"] = st.text_input(f"Till", key=f"2_{day}_till_2", value=value)
+            st.session_state[day][f"2_{day}_till_2"] = st.text_input(f"Till", key=f"2_{day}_till_2", value=value, disabled=disabled)
             if len(st.session_state[day][f"2_{day}_till_2"]) != 5 and st.session_state[day][f"2_{day}_till_2"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"2_{day}_till_2"] and st.session_state[day][f"2_{day}_till_2"] != '':
@@ -817,7 +826,7 @@ def all_timesheets_page():
 
     # print("Before submitting the timesheet", pay_period.get_total_hours())
 
-    if st.button("Submit"):
+    if st.button("Submit", disabled=disabled):
         # Converting the timesheet to a list of TimeSlot objects with pay period
 
         user.submit_timesheet(pay_period, timeslots)
