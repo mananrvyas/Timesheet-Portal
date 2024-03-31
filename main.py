@@ -26,7 +26,6 @@ ADMIN_PIN = os.getenv('ADMIN_PIN')
 MAE_NETID = os.getenv('MAE_NETID')
 JULIA_NETID = os.getenv('JULIA_NETID')
 
-
 st.set_page_config(page_title="Timesheet Portal", layout="centered")
 # WHY DOES THIS NOT WORK ARGRGGDGHFJKGHKDFGHKLASDfgIOASUDFRghIOASDFG
 # st.markdown(
@@ -55,7 +54,8 @@ if 'DEFAULT_SCHEDULE' not in st.session_state:
         'Friday': [TimeSlot('01/07/23', '09:30', '10:30'), TimeSlot('01/07/23', '17:00', '18:00')],
         'Saturday': []
     }
-
+if "admin_selected_pay_period" not in st.session_state:
+    st.session_state.admin_selected_pay_period = None
 if 'USERS' not in st.session_state:
     st.session_state.USERS = [
         StandardUser('plattem', hashlib.sha256('admin'.encode()).hexdigest(), 'admin', 'MSU', 'admin@msu.edu'
@@ -63,9 +63,21 @@ if 'USERS' not in st.session_state:
         StandardUser('vyasmana', hashlib.sha256('Manan'.encode()).hexdigest(), 'user', 'MSU', 'vyasmana@msu.edu',
                      st.session_state.DEFAULT_SCHEDULE)]
 
+user_manan = st.session_state.USERS[1]
+
+try:
+    if user_manan._username == 'vyasmana':
+        user_manan.submit_default_schedule(PayPeriod('02/11/24'))
+        user_manan.submit_default_schedule(PayPeriod('01/1/23'))
+except Exception as e:
+    print(e)
+    # print(st.session_state.USERS[0])
+    # print(st.session_state.USERS[1])
+    pass
+
 # # adding some timesheets to data (to test the dashboard)
-# user_manan = st.session_state.USERS[1]
-#
+
+# #
 # second_pay_period = PayPeriod('01/15/23')
 # custom_timeslots = [
 #     TimeSlot('01/16/23', '10:00', '15:00'),
@@ -75,9 +87,18 @@ if 'USERS' not in st.session_state:
 # user_manan.submit_timesheet(second_pay_period, custom_timeslots)
 # #
 # #
-# pay_period = PayPeriod('02/11/24')
-# user_manan.submit_default_schedule(pay_period)
-# pay_period.is_approved = 'approved'
+# try:
+#     user_manan = st.session_state.USERS[1]
+#     pay_period = PayPeriod('02/11/24')
+#     pay_period.is_approved = 'pending'
+#     user_manan.submit_default_schedule(pay_period)
+#     second_pay_period = PayPeriod('02/15/24')
+#     second_pay_period.is_approved = 'pending'
+#     user_manan.submit_default_schedule(second_pay_period)
+#
+# except:
+#     pass
+# # pay_period.is_approved = 'approved'
 
 
 if 'current_page' not in st.session_state:
@@ -180,6 +201,9 @@ def admin_dashboard_page():
         except:
             continue
 
+    if "admin_selected_user" not in st.session_state:
+        st.session_state.admin_selected_user = None
+
     with col1:
         if st.button(dummy_list[0]):
             st.session_state.admin_selected_user = dummy_list[0]
@@ -237,30 +261,114 @@ def admin_dashboard_page():
 
     st.write(f"The users who require your attention are colored in blue. (TODO).")
 
+    if st.button("Logout"):
+        st.session_state.current_page = 'login'
+        st.rerun()
+
     st.write("--" * 15)
 
     if admin_selected_user is not None:
+        st.session_state.admin_selected_pay_period = None
+
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown(f"<p class='big-font'> Past time sheets Graph", unsafe_allow_html=True)
+            st.subheader(f"{admin_selected_user._username}\'s last 5 time sheets")
+            # display the graph here
+            df = create_timesheet_data(admin_selected_user._username)
+            fig = plot_timesheet_bar_chart(df)
+            st.pyplot(fig)
 
         with col2:
-            st.markdown(f"<p class='big-font'>{admin_selected_user._username}\'s Notifications</p>",
-                        unsafe_allow_html=True)
-            st.markdown("""
-            <style>
-            .big-font {
-                font-size:25px !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
+            st.subheader(f"{admin_selected_user._username}\'s Notifications")
+            st.write("Click on the payperiod to view the timesheet and approve or reject it.")
+            # print(admin_selected_user.get_latest_pay_period())
+            st.session_state.admin_clicked_pay_period = None
+            for i in admin_selected_user._timesheets:
+                # if st.session_state.admin_selected_pay_period is not None:
+                #     st.session_state.admin_selected_pay_period = None
+                if i['pay_period'].is_approved == 'pending':
+                    if st.button(f"Pay Period: {i['pay_period'].get_start_date().strftime('%d %b %Y')}"):
+                        st.session_state.admin_selected_pay_period = i['pay_period']
+                        # st.rerun()
 
-            col3, col4 = st.columns(2)
-            with col3:
-                st.write("Actions")
-                st.write("Approve/Reject Timesheets")
-            with col4:
-                st.write("Notifications")
+
+    st.write("--" * 15)
+    if st.session_state.admin_selected_pay_period is not None:
+        st.session_state.admin_clicked_pay_period = True
+        # name user and pay period
+        st.subheader(f"{admin_selected_user._username}\'s Timesheet for the week of "
+                     f"{st.session_state.admin_selected_pay_period.get_start_date().strftime('%d %b %Y')}")
+
+        week1_timesheet, week2_timesheet = pretty_print_timesheet_v2(st.session_state.admin_selected_pay_period)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader(week1_timesheet[0])
+            for entry in week1_timesheet[1:]:
+                if entry:
+                    if entry.startswith(" - "):
+                        st.markdown(f"<div>{entry}</div>", unsafe_allow_html=True)
+                    else:
+                        st.write("")
+                        st.markdown(f"<div><strong>{entry}</strong></div>", unsafe_allow_html=True)
+
+        with col2:
+            st.subheader(week2_timesheet[0])
+            for entry in week2_timesheet[1:]:
+                if entry:
+                    if entry.startswith(" - "):
+                        st.markdown(f"<div>{entry}</div>", unsafe_allow_html=True)
+                    else:
+                        st.write("")
+                        st.markdown(f"<div><strong>{entry}</strong></div>", unsafe_allow_html=True)
+        st.write("")
+
+        st.write("Total hours: ", st.session_state.admin_selected_pay_period.get_total_hours())
+        if st.button("Approve"):
+            st.session_state.admin_selected_pay_period.is_approved = 'approved'
+            st.success("Timesheet approved.")
+            time.sleep(1)
+            print("##################################################")
+            st.session_state.admin_selected_pay_period = None
+            st.rerun()
+        if st.button("Reject"):
+            st.session_state.admin_selected_pay_period.is_approved = 'rejected'
+            st.error("Timesheet rejected.")
+            st.session_state.admin_selected_pay_period = None
+            st.rerun()
+
+
+def pretty_print_timesheet_v2(pay_period):
+    def week_of_date(date_str, format='%m/%d/%y'):
+        date = datetime.datetime.strptime(date_str, format)
+        start_of_week = date - datetime.timedelta(days=date.weekday())
+        return start_of_week.strftime(format)
+
+    timesheet = pay_period.get_timesheet_by_pay_period()
+    sorted_dates = sorted(timesheet.keys(), key=lambda x: datetime.datetime.strptime(x, '%m/%d/%y'))
+
+    start_date = datetime.datetime.strptime(pay_period.get_start_date().strftime('%m/%d/%y'), '%m/%d/%y')
+    end_date = datetime.datetime.strptime(pay_period.get_end_date().strftime('%m/%d/%y'), '%m/%d/%y')
+    midpoint_date = start_date + (end_date - start_date) / 2
+
+    first_week_output = [f"Week of {week_of_date(sorted_dates[0])}"]
+    second_week_output = [f"Week of {week_of_date(sorted_dates[len(sorted_dates) // 2])}"]
+
+    for date_str in sorted_dates:
+        current_date = datetime.datetime.strptime(date_str, '%m/%d/%y')
+        week_output = first_week_output if current_date <= midpoint_date else second_week_output
+
+        day_name = current_date.strftime('%A')
+        week_output.append(f"{day_name} ({date_str})")
+
+        timeslots = timesheet[date_str]
+        for slot in timeslots:
+            start_time = slot.get_start().strftime('%H:%M')
+            end_time = slot.get_end().strftime('%H:%M')
+            week_output.append(f" - {start_time} to {end_time}")
+
+        week_output.append("")
+
+    return first_week_output, second_week_output
 
 
 def create_timesheet_data(username='vyasmana'):
@@ -276,7 +384,12 @@ def create_timesheet_data(username='vyasmana'):
         st.error("User not found. Please contact the administrator (or create an account).")
         return
 
-    time_sheets = user._timesheets
+    time_sheets = user._timesheets[::-1]
+
+    # # reverse the list to get the most recent timesheets first
+    # time_sheets = dict(reversed(time_sheets.items()))
+
+    # print(time_sheets)
 
     last_five_timeshetes = []
     for i in range(6):
@@ -287,6 +400,8 @@ def create_timesheet_data(username='vyasmana'):
         except:
             last_five_timeshetes.append("")
 
+    # last_five_timeshetes = last_five_timeshetes[::-1]
+
     last_five_pay_periods = []
     for i in range(6):
         if i == 5:
@@ -295,6 +410,7 @@ def create_timesheet_data(username='vyasmana'):
             last_five_pay_periods.append(last_five_timeshetes[i].get_start_date().strftime('%d %b'))
         except:
             last_five_pay_periods.append("")
+    # last_five_pay_periods = last_five_pay_periods[::-1]
 
     hours = []
     for i in range(6):
@@ -304,6 +420,7 @@ def create_timesheet_data(username='vyasmana'):
             hours.append(last_five_timeshetes[i].get_total_hours())
         except:
             hours.append(0)
+    # hours = hours[::-1]
 
     status = []
     for i in range(6):
@@ -313,6 +430,7 @@ def create_timesheet_data(username='vyasmana'):
             status.append(last_five_timeshetes[i].is_approved)
         except:
             status.append('pending')
+    # status = status[::-1]
 
     data = {
         'Date': last_five_pay_periods,
@@ -367,7 +485,7 @@ def dashboard_page():
 
     with col1:
         st.subheader(f'{user._username}')
-        image_url = "https://via.placeholder.com/150"
+        image_url = "1"
         if user._photo:
             image_url = user._photo
         try:
@@ -387,6 +505,9 @@ def dashboard_page():
             st.rerun()
         if st.button("Edit default schedule"):
             st.session_state.current_page = 'edit_default_schedule'
+            st.rerun()
+        if st.button("Logout"):
+            st.session_state.current_page = 'login'
             st.rerun()
 
     with col2:
@@ -570,7 +691,8 @@ def all_timesheets_page():
                 value = schedule[day][0].get_start().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"1_{day}_from_1"] = st.text_input(f"From", key=f"1_{day}_from_1", value=value, disabled=disabled)
+            st.session_state[day][f"1_{day}_from_1"] = st.text_input(f"From", key=f"1_{day}_from_1", value=value,
+                                                                     disabled=disabled)
             if len(st.session_state[day][f"1_{day}_from_1"]) != 5 and st.session_state[day][f"1_{day}_from_1"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"1_{day}_from_1"] and st.session_state[day][f"1_{day}_from_1"] != '':
@@ -586,7 +708,8 @@ def all_timesheets_page():
                 value = schedule[day][0].get_end().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"1_{day}_till_1"] = st.text_input(f"Till", key=f"1_{day}_till_1", value=value, disabled=disabled)
+            st.session_state[day][f"1_{day}_till_1"] = st.text_input(f"Till", key=f"1_{day}_till_1", value=value,
+                                                                     disabled=disabled)
             if len(st.session_state[day][f"1_{day}_till_1"]) != 5 and st.session_state[day][f"1_{day}_till_1"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"1_{day}_till_1"] and st.session_state[day][f"1_{day}_till_1"] != '':
@@ -602,7 +725,8 @@ def all_timesheets_page():
                 value = schedule[day][1].get_start().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"1_{day}_from_2"] = st.text_input(f"From", key=f"1_{day}_from_2", value=value, disabled=disabled)
+            st.session_state[day][f"1_{day}_from_2"] = st.text_input(f"From", key=f"1_{day}_from_2", value=value,
+                                                                     disabled=disabled)
             if len(st.session_state[day][f"1_{day}_from_2"]) != 5 and st.session_state[day][f"1_{day}_from_2"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"1_{day}_from_2"] and st.session_state[day][f"1_{day}_from_2"] != '':
@@ -618,7 +742,8 @@ def all_timesheets_page():
                 value = schedule[day][1].get_end().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"1_{day}_till_2"] = st.text_input(f"Till", key=f"1_{day}_till_2", value=value, disabled=disabled)
+            st.session_state[day][f"1_{day}_till_2"] = st.text_input(f"Till", key=f"1_{day}_till_2", value=value,
+                                                                     disabled=disabled)
             if len(st.session_state[day][f"1_{day}_till_2"]) != 5 and st.session_state[day][f"1_{day}_till_2"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"1_{day}_till_2"] and st.session_state[day][f"1_{day}_till_2"] != '':
@@ -673,7 +798,8 @@ def all_timesheets_page():
                 value = schedule[day][0].get_start().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"2_{day}_from_1"] = st.text_input(f"From", key=f"2_{day}_from_1", value=value, disabled=disabled)
+            st.session_state[day][f"2_{day}_from_1"] = st.text_input(f"From", key=f"2_{day}_from_1", value=value,
+                                                                     disabled=disabled)
             if len(st.session_state[day][f"2_{day}_from_1"]) != 5 and st.session_state[day][f"2_{day}_from_1"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"2_{day}_from_1"] and st.session_state[day][f"2_{day}_from_1"] != '':
@@ -690,7 +816,8 @@ def all_timesheets_page():
                 value = schedule[day][0].get_end().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"2_{day}_till_1"] = st.text_input(f"Till", key=f"2_{day}_till_1", value=value, disabled=disabled)
+            st.session_state[day][f"2_{day}_till_1"] = st.text_input(f"Till", key=f"2_{day}_till_1", value=value,
+                                                                     disabled=disabled)
             if len(st.session_state[day][f"2_{day}_till_1"]) != 5 and st.session_state[day][f"2_{day}_till_1"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"2_{day}_till_1"] and st.session_state[day][f"2_{day}_till_1"] != '':
@@ -706,7 +833,8 @@ def all_timesheets_page():
                 value = schedule[day][1].get_start().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"2_{day}_from_2"] = st.text_input(f"From", key=f"2_{day}_from_2", value=value, disabled=disabled)
+            st.session_state[day][f"2_{day}_from_2"] = st.text_input(f"From", key=f"2_{day}_from_2", value=value,
+                                                                     disabled=disabled)
             if len(st.session_state[day][f"2_{day}_from_2"]) != 5 and st.session_state[day][f"2_{day}_from_2"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"2_{day}_from_2"] and st.session_state[day][f"2_{day}_from_2"] != '':
@@ -722,7 +850,8 @@ def all_timesheets_page():
                 value = schedule[day][1].get_end().strftime('%H:%M')
             except:
                 value = ''
-            st.session_state[day][f"2_{day}_till_2"] = st.text_input(f"Till", key=f"2_{day}_till_2", value=value, disabled=disabled)
+            st.session_state[day][f"2_{day}_till_2"] = st.text_input(f"Till", key=f"2_{day}_till_2", value=value,
+                                                                     disabled=disabled)
             if len(st.session_state[day][f"2_{day}_till_2"]) != 5 and st.session_state[day][f"2_{day}_till_2"] != '':
                 st.error("Invalid format.")
             elif ':' not in st.session_state[day][f"2_{day}_till_2"] and st.session_state[day][f"2_{day}_till_2"] != '':
@@ -767,35 +896,35 @@ def all_timesheets_page():
     for i, day in enumerate(days):
         if st.session_state[day][f"1_{day}_from_1"] != '' and st.session_state[day][f"1_{day}_till_1"] != '':
             zz = (TimeSlot((week_start + datetime.timedelta(days=i)).strftime('%m/%d/%y'),
-                                      st.session_state[day][f"1_{day}_from_1"],
-                                      st.session_state[day][f"1_{day}_till_1"]))
+                           st.session_state[day][f"1_{day}_from_1"],
+                           st.session_state[day][f"1_{day}_till_1"]))
             timeslots.append(zz)
             # print("1st if statement", zz)
             # print("1st if statement", timeslots)
         if st.session_state[day][f"1_{day}_from_2"] != '' and st.session_state[day][f"1_{day}_till_2"] != '':
             zz = (TimeSlot((week_start + datetime.timedelta(days=i)).strftime('%m/%d/%y'),
-                                      st.session_state[day][f"1_{day}_from_2"],
-                                      st.session_state[day][f"1_{day}_till_2"]))
+                           st.session_state[day][f"1_{day}_from_2"],
+                           st.session_state[day][f"1_{day}_till_2"]))
             timeslots.append(zz)
             # print("2nd if statement", zz)
             # print("2nd if statement", timeslots)
         if st.session_state[day][f"2_{day}_from_1"] != '' and st.session_state[day][f"2_{day}_till_1"] != '':
             zz = (TimeSlot((week_start + datetime.timedelta(days=i + 7)).strftime('%m/%d/%y'),
-                                      st.session_state[day][f"2_{day}_from_1"],
-                                      st.session_state[day][f"2_{day}_till_1"]))
+                           st.session_state[day][f"2_{day}_from_1"],
+                           st.session_state[day][f"2_{day}_till_1"]))
             timeslots.append(zz)
             # print("3rd if statement", zz)
             # print("3rd if statement", timeslots)
         if st.session_state[day][f"2_{day}_from_2"] != '' and st.session_state[day][f"2_{day}_till_2"] != '':
             zz = (TimeSlot((week_start + datetime.timedelta(days=i + 7)).strftime('%m/%d/%y'),
-                                      st.session_state[day][f"2_{day}_from_2"],
-                                      st.session_state[day][f"2_{day}_till_2"]))
+                           st.session_state[day][f"2_{day}_from_2"],
+                           st.session_state[day][f"2_{day}_till_2"]))
             timeslots.append(zz)
             # print("4th if statement", zz)
 
     # print("END OF FOR LOOP")
 
-            # print("4th if statement", timeslots)
+    # print("4th if statement", timeslots)
 
     # for i in range(len(days)):
     #     if st.
@@ -815,8 +944,6 @@ def all_timesheets_page():
     # print("The for loop")
     # for i in range(14):
     #     print(pay_period.get_timesheet_by_date((week_start + datetime.timedelta(days=i)).strftime('%m/%d/%y')))
-
-
 
     # print(pay_period.get_timesheet_by_pay_period())
 
@@ -841,7 +968,7 @@ def all_timesheets_page():
         st.toast("Mailing it to Mae and Julia...")
         time.sleep(1)
         st.toast("Done!", icon='🎉')
-        # time.sleep(0.5)
+        time.sleep(0.5)
         st.success("Timesheet submitted successfully!")
         time.sleep(0.8)
         st.success("Redirecting to dashboard...")
@@ -1291,7 +1418,8 @@ def edit_profile_page():
                                         " link here)")
     with col2:
         lname = st.text_input("Last Name", value=user._lname)
-        misc_info = st.text_area("Miscellaneous Information", value=user._miscellaneous, height=122, help="It can be a quote, a short bio, etc.")
+        misc_info = st.text_area("Miscellaneous Information", value=user._miscellaneous, height=122,
+                                 help="It can be a quote, a short bio, etc.")
 
     if st.button("Save Changes"):
         if fname != '':
@@ -1345,7 +1473,7 @@ elif st.session_state.current_page == 'edit_profile':
 # -> Create Admin Dashboard (in-progress)
 # -> Mail the timesheet to the admin when user clicks submit
 # -> Send the confirmation email to the user when they submit
-# -> Disable the already submitted time sheets
+# -> Disable the already submitted time sheets (DONE)
 # -> Use an actual database
 # -> Cookies for login
 # -> Add some more elements in the StandardUser class to display in the dashboard (DONE)

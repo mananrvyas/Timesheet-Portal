@@ -176,7 +176,7 @@ class StandardUser:
 #         'Saturday': []
 #     }
 #
-# # #
+# #
 # user = StandardUser('vyasmana', hashlib.sha256('Manan'.encode()).hexdigest(), 'user', 'MSU', 'vyasmana@msu.edu',
 #                     DEFAULT_SCHEDULE)
 #
@@ -184,6 +184,22 @@ class StandardUser:
 #
 # user.submit_default_schedule(pay_period)
 #
+# second_pay_period = PayPeriod('01/15/23')
+# custom_timeslots = [
+#     TimeSlot('01/16/23', '10:00', '15:00'),
+#     TimeSlot('01/17/23', '10:00', '15:00'),
+#     TimeSlot('01/18/23', '10:00', '15:00'),
+# ]
+# user.submit_timesheet(second_pay_period, custom_timeslots)
+#
+# second_pay_period.is_approved = 'approved'
+#
+# for i in user._timesheets:
+#     # check if payperiod is pending
+#     if i['pay_period'].is_approved == 'pending':
+#         print(i['pay_period'].get_start_date())
+#         print("\n\n\n")
+# #
 # print(user._timesheets[-1]['pay_period'].get_total_hours())
 
 
