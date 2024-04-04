@@ -70,7 +70,7 @@ try:
         user_manan.submit_default_schedule(PayPeriod('02/11/24'))
         user_manan.submit_default_schedule(PayPeriod('01/1/23'))
 except Exception as e:
-    print(e)
+    # print(e)
     # print(st.session_state.USERS[0])
     # print(st.session_state.USERS[1])
     pass

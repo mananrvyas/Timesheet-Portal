@@ -2,18 +2,19 @@ from PayPeriod import PayPeriod
 from TimeSlot import TimeSlot
 from datetime import datetime, timedelta, date
 import hashlib
-
+from copy import deepcopy
+# I HATE PYTHON
 
 # import pandas as pd
 # import matplotlib.pyplot as plt
 
 class StandardUser:
-    def __init__(self, username, password, role, organization, email_address, default_schedule=None, timesheets=[]):
+    def __init__(self, username, password, role, organization, email_address, default_schedule=None, timesheets=None):
         self._username = username
         self._password = password
         self._role = role
-        self._default_schedule = default_schedule if default_schedule else {}
-        self._timesheets = timesheets
+        self._default_schedule = deepcopy(default_schedule) if default_schedule else {}
+        self._timesheets = []
         self._organization = organization
         self._email_address = username + '@msu.edu'
         self._fname = None
@@ -175,6 +176,28 @@ class StandardUser:
 #         'Friday': [TimeSlot('01/07/23', '09:30', '10:30'), TimeSlot('01/07/23', '17:00', '18:00')],
 #         'Saturday': []
 #     }
+#
+# DEFAULT_SCHEDULE_2 = {
+#         'Sunday': [],
+#         'Monday': [TimeSlot('01/03/23', '09:00', '11:00'), TimeSlot('01/03/23', '13:00', '14:00')],
+#         'Tuesday': [TimeSlot('01/04/23', '10:00', '12:00'), TimeSlot('01/04/23', '14:00', '15:00')],
+#         'Wednesday': [TimeSlot('01/05/23', '10:50', '11:50'), TimeSlot('01/05/23', '15:00', '16:00')],
+#         'Thursday': [TimeSlot('01/06/23', '09:40', '12:40'), TimeSlot('01/06/23', '16:00', '17:00')],
+#         'Friday': [TimeSlot('01/07/23', '09:30', '10:30'), TimeSlot('01/07/23', '17:00', '18:00')],
+#         'Saturday': []
+#     }
+#
+# user_1 = StandardUser('vyasmana', hashlib.sha256('password'.encode()).hexdigest(), 'employee', 'company', 'vyasmana@msu.edu', DEFAULT_SCHEDULE)
+#
+# user_2 = StandardUser('plattem', hashlib.sha256('password'.encode()).hexdigest(), 'employee', 'company', 'plattem@msu.edu', DEFAULT_SCHEDULE_2)
+#
+# user_2.submit_default_schedule(PayPeriod('01/01/23'))
+#
+# print(user_1)
+# print(user_2)
+
+
+# username, password, role, organization, email_address, default_schedule=None, timesheets=[]
 #
 # #
 # user = StandardUser('vyasmana', hashlib.sha256('Manan'.encode()).hexdigest(), 'user', 'MSU', 'vyasmana@msu.edu',
