@@ -30,6 +30,9 @@ class StandardUser:
     def set_first_name(self, fname):
         self._fname = fname
 
+    def set_timesheets(self, timesheets):
+        self._timesheets = timesheets
+
     def set_last_name(self, lname):
         self._lname = lname
 

@@ -54,8 +54,6 @@ if 'DEFAULT_SCHEDULE' not in st.session_state:
         'Friday': [TimeSlot('01/07/23', '09:30', '10:30'), TimeSlot('01/07/23', '17:00', '18:00')],
         'Saturday': []
     }
-if "admin_selected_pay_period" not in st.session_state:
-    st.session_state.admin_selected_pay_period = None
 if 'USERS' not in st.session_state:
     st.session_state.USERS = [
         StandardUser('plattem', hashlib.sha256('admin'.encode()).hexdigest(), 'admin', 'MSU', 'admin@msu.edu'
@@ -268,12 +266,10 @@ def admin_dashboard_page():
     st.write("--" * 15)
 
     if admin_selected_user is not None:
-        st.session_state.admin_selected_pay_period = None
-
+        # st.session_state.admin_selected_pay_period = None
         col1, col2 = st.columns(2)
         with col1:
             st.subheader(f"{admin_selected_user._username}\'s last 5 time sheets")
-            # display the graph here
             df = create_timesheet_data(admin_selected_user._username)
             fig = plot_timesheet_bar_chart(df)
             st.pyplot(fig)
@@ -281,60 +277,61 @@ def admin_dashboard_page():
         with col2:
             st.subheader(f"{admin_selected_user._username}\'s Notifications")
             st.write("Click on the payperiod to view the timesheet and approve or reject it.")
-            # print(admin_selected_user.get_latest_pay_period())
-            st.session_state.admin_clicked_pay_period = None
             for i in admin_selected_user._timesheets:
-                # if st.session_state.admin_selected_pay_period is not None:
-                #     st.session_state.admin_selected_pay_period = None
                 if i['pay_period'].is_approved == 'pending':
                     if st.button(f"Pay Period: {i['pay_period'].get_start_date().strftime('%d %b %Y')}"):
                         st.session_state.admin_selected_pay_period = i['pay_period']
-                        # st.rerun()
-
+                        st.rerun()
 
     st.write("--" * 15)
-    if st.session_state.admin_selected_pay_period is not None:
-        st.session_state.admin_clicked_pay_period = True
-        # name user and pay period
-        st.subheader(f"{admin_selected_user._username}\'s Timesheet for the week of "
-                     f"{st.session_state.admin_selected_pay_period.get_start_date().strftime('%d %b %Y')}")
 
-        week1_timesheet, week2_timesheet = pretty_print_timesheet_v2(st.session_state.admin_selected_pay_period)
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader(week1_timesheet[0])
-            for entry in week1_timesheet[1:]:
-                if entry:
-                    if entry.startswith(" - "):
-                        st.markdown(f"<div>{entry}</div>", unsafe_allow_html=True)
-                    else:
-                        st.write("")
-                        st.markdown(f"<div><strong>{entry}</strong></div>", unsafe_allow_html=True)
+    try:
+        if st.session_state.admin_selected_pay_period is not None:
+            st.subheader(f"{admin_selected_user._username}\'s Timesheet for the week of "
+                         f"{st.session_state.admin_selected_pay_period.get_start_date().strftime('%d %b %Y')}")
 
-        with col2:
-            st.subheader(week2_timesheet[0])
-            for entry in week2_timesheet[1:]:
-                if entry:
-                    if entry.startswith(" - "):
-                        st.markdown(f"<div>{entry}</div>", unsafe_allow_html=True)
-                    else:
-                        st.write("")
-                        st.markdown(f"<div><strong>{entry}</strong></div>", unsafe_allow_html=True)
-        st.write("")
+            week1_timesheet, week2_timesheet = pretty_print_timesheet_v2(st.session_state.admin_selected_pay_period)
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader(week1_timesheet[0])
+                for entry in week1_timesheet[1:]:
+                    if entry:
+                        if entry.startswith(" - "):
+                            st.markdown(f"<div>{entry}</div>", unsafe_allow_html=True)
+                        else:
+                            st.write("")
+                            st.markdown(f"<div><strong>{entry}</strong></div>", unsafe_allow_html=True)
 
-        st.write("Total hours: ", st.session_state.admin_selected_pay_period.get_total_hours())
-        if st.button("Approve"):
-            st.session_state.admin_selected_pay_period.is_approved = 'approved'
-            st.success("Timesheet approved.")
-            time.sleep(1)
-            print("##################################################")
-            st.session_state.admin_selected_pay_period = None
-            st.rerun()
-        if st.button("Reject"):
-            st.session_state.admin_selected_pay_period.is_approved = 'rejected'
-            st.error("Timesheet rejected.")
-            st.session_state.admin_selected_pay_period = None
-            st.rerun()
+            with col2:
+                st.subheader(week2_timesheet[0])
+                for entry in week2_timesheet[1:]:
+                    if entry:
+                        if entry.startswith(" - "):
+                            st.markdown(f"<div>{entry}</div>", unsafe_allow_html=True)
+                        else:
+                            st.write("")
+                            st.markdown(f"<div><strong>{entry}</strong></div>", unsafe_allow_html=True)
+            st.write("")
+
+            st.write("Total hours: ", st.session_state.admin_selected_pay_period.get_total_hours())
+
+            def approve_or_reject(args):
+                st.session_state.admin_selected_pay_period.is_approved = args
+                if args == 'rejected':
+                    st.toast("Rejecting the timesheet...")
+                    time.sleep(1)
+                    st.toast("Timesheet Rejected!", icon=':/')
+                else:
+                    st.toast("Approving the timesheet...")
+                    time.sleep(1)
+                    st.toast("Timesheet Approved!", icon='🎉')
+                st.session_state.admin_selected_pay_period = None
+
+            st.button('Approve', on_click=approve_or_reject, args=['approved'])
+            st.button('Reject', on_click=approve_or_reject, args=['rejected'])
+
+    except:
+        pass
 
 
 def pretty_print_timesheet_v2(pay_period):
