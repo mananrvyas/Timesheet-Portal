@@ -17,6 +17,7 @@ import os
 from dotenv import load_dotenv
 import time
 from random import getrandbits
+import extra_streamlit_components as stx
 
 load_dotenv()
 MAILGUN_API_KEY = os.getenv('MAILGUN_API_KEY')
@@ -54,6 +55,7 @@ if 'DEFAULT_SCHEDULE' not in st.session_state:
         'Friday': [TimeSlot('01/07/23', '09:30', '10:30'), TimeSlot('01/07/23', '17:00', '18:00')],
         'Saturday': []
     }
+
 if 'USERS' not in st.session_state:
     st.session_state.USERS = [
         StandardUser('plattem', hashlib.sha256('admin'.encode()).hexdigest(), 'admin', 'MSU', 'admin@msu.edu'
@@ -108,30 +110,19 @@ if 'page_history' not in st.session_state:
 
 
 def login_page():
-    # col1, col2, col3 = st.columns(3)
+    cookie_manager = stx.CookieManager()
 
-    # with col1:
-    #     if st.button("Home"):
-    #         st.session_state.current_page = 'login'
-    #         st.rerun()
-    #
-    # with col2:
-    #     if st.button("Dashboard"):
-    #         if 'user_info' not in st.session_state:
-    #             st.error("You must be logged in to access the dashboard.")
-    #             time.sleep(1)
-    #             st.rerun()
-    #         elif st.session_state.user_info['role'] == 'admin':
-    #             st.session_state.current_page = 'admin_dashboard'
-    #             st.rerun()
-    #         else:
-    #             st.session_state.current_page = 'dashboard'
-    #             st.rerun()
-    #
-    # with col3:
-    #     if st.button("About"):
-    #         st.session_state.current_page = 'about'
-    #         st.rerun()
+    username_cookie = cookie_manager.get("username")
+    role_cookie = cookie_manager.get("role")
+    user_info_cookie = {'username': username_cookie, 'role': role_cookie}
+
+    print("user_info_cookie:: ", user_info_cookie)
+
+    if user_info_cookie['username']:
+        st.session_state.user_info = user_info_cookie
+        st.session_state.page_history.append(st.session_state.current_page)
+        st.session_state.current_page = 'dashboard'
+        st.rerun()
 
     st.title("Sign In")
     st.subheader("Sign in to the Timesheet Portal")
@@ -141,8 +132,8 @@ def login_page():
     username = form.text_input("Username")
     password = form.text_input("Password", type='password')
 
-    form.checkbox("Remember me")  # doesnt work lol
-    # ################ Add remember me functionality #################
+    remember_me = form.checkbox("Remember me")
+
     if form.form_submit_button("Sign In"):
         hashed_pwd = hashlib.sha256(password.encode()).hexdigest()
         # Authenticate user
@@ -153,18 +144,17 @@ def login_page():
                 break
 
         if user:
-            st.session_state.user_info = {'username': user._username, 'role': user._role}  # Save user info
-            if user._role == 'admin':
-                st.session_state.page_history.append(st.session_state.current_page)
-                st.session_state.current_page = 'dashboard'
-            else:
-                st.session_state.page_history.append(st.session_state.current_page)
-                st.session_state.current_page = 'dashboard'
+            st.session_state.user_info = {'username': user._username, 'role': user._role}  # Adjust accordingly
+            if remember_me:
+                cookie_manager.set("username", user._username, key="username")
+                cookie_manager.set("role", user._role, key="role")
+
+            st.session_state.page_history.append(st.session_state.current_page)
+            st.session_state.current_page = 'dashboard'
             st.rerun()
         else:
             st.error("Invalid Username or Password")
 
-    # st.write("Forgot password?")
     if st.button("Forgot password?"):
         st.session_state.page_history.append(st.session_state.current_page)
         st.session_state.current_page = 'forgot_password'
@@ -320,7 +310,7 @@ def admin_dashboard_page():
                 if args == 'rejected':
                     st.toast("Rejecting the timesheet...")
                     time.sleep(1)
-                    st.toast("Timesheet Rejected!", icon=':/')
+                    st.toast("Timesheet Rejected!", icon='🎉')
                 else:
                     st.toast("Approving the timesheet...")
                     time.sleep(1)
@@ -469,6 +459,7 @@ def dashboard_page():
     for i in st.session_state.USERS:
         if i._username == st.session_state.user_info['username']:
             user = i
+            st.session_state.user_info['role'] = i._role
             break
     if user is None:
         st.error("User not found. Please contact the administrator (or create an account).")

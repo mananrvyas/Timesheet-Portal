@@ -4,3 +4,4 @@ streamlit
 python-dotenv
 pandas
 numpy
+extra-streamlit-components
