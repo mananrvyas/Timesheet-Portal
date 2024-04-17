@@ -2,55 +2,52 @@ from PayPeriod import PayPeriod
 from TimeSlot import TimeSlot
 from datetime import datetime, timedelta, date
 import hashlib
-from copy import deepcopy
-# I HATE PYTHON
+import json
 
-# import pandas as pd
-# import matplotlib.pyplot as plt
 
 class StandardUser:
-    def __init__(self, username, password, role, organization, email_address, default_schedule=None, timesheets=None):
-        self._username = username
+    def __init__(self, username, password, organization, default_schedule=None, timesheets=None):
+        self.username = username
         self._password = password
-        self._role = role
-        self._default_schedule = deepcopy(default_schedule) if default_schedule else {}
-        self._timesheets = []
-        self._organization = organization
-        self._email_address = username + '@msu.edu'
-        self._fname = None
-        self._lname = None
-        self._photo = None
-        self._miscellaneous = None
+        self._default_schedule = {} if default_schedule is None else default_schedule
+        self._timesheets = [] if timesheets is None else timesheets
+        self.organization = organization
+        self.email_address = username + '@msu.edu'
+        self.fname = None
+        self.lname = None
+        self.photo = None
+        self.miscellaneous = None
         self._phone_number = None
         # hourly wage (optional) # we can show their total earnings for the pay period
 
     def set_password(self, password):
-        self._password = hashlib.sha256(password.encode()).hexdigest()
+        self._password = password
 
     def set_first_name(self, fname):
-        self._fname = fname
+        self.fname = fname
 
     def set_timesheets(self, timesheets):
         self._timesheets = timesheets
 
     def set_last_name(self, lname):
-        self._lname = lname
+        self.lname = lname
 
     def set_photo_url(self, photo):
-        self._photo = photo
+        self.photo = photo
 
     def set_miscellaneous(self, misc):
-        self._miscellaneous = misc
+        self.miscellaneous = misc
 
     def set_phone_number(self, phone):
         self._phone_number = phone
 
     def check_password(self, input_password):
-        return self._password == hashlib.sha256(input_password.encode()).hexdigest()
+        return self._password == input_password
 
     def submit_timesheet(self, pay_period, timeslots):
-        if not isinstance(pay_period, PayPeriod):
-            raise TypeError("pay_period must be an instance of PayPeriod")
+        # if not isinstance(pay_period, PayPeriod):
+        #     print(type(pay_period))
+        #     raise TypeError(f"pay_period must be an instance of PayPeriod, not {type(pay_period)}")
 
         for i in timeslots:
             pay_period.add_timeslot(i)
@@ -66,6 +63,9 @@ class StandardUser:
         for i in self._timesheets:
             if i['pay_period'] == pay_period:
                 return i['timesheet']
+
+    def get_password(self):
+        return self._password
 
     def get_timesheets(self):
         return self._timesheets
@@ -108,12 +108,25 @@ class StandardUser:
         self.submit_timesheet(pay_period, timeslots)
 
     def __repr__(self):
-        repr = (f"Username: {self._username}\n"
-                f"Role: {self._role}\n"
-                f"Organization: {self._organization}\n"
+        repr = (f"Username: {self.username}\n"
+                f"Organization: {self.organization}\n"
                 f"Default Schedule: {self._default_schedule}\n"
-                f"Timesheets: {self._timesheets}\n")
+                f"Timesheets: {self._timesheets}\n"
+                f"Email Address: {self.email_address}\n"
+                f"First Name: {self.fname}\n"
+                f"Last Name: {self.lname}\n"
+                f"Photo: {self.photo}\n"
+                f"Miscellaneous: {self.miscellaneous}\n"
+                f"Phone Number: {self._phone_number}\n")
         return repr
+
+    def __eq__(self, other):
+        if not isinstance(other, StandardUser):
+            return NotImplemented
+        return (self.username, self._password, self.organization, self._default_schedule, self._timesheets,
+                self.email_address, self.fname, self.lname, self.photo, self.miscellaneous, self._phone_number) == \
+               (other.username, other._password, other.organization, other._default_schedule, other._timesheets,
+                other.email_address, other.fname, other.lname, other.photo, other.miscellaneous, other._phone_number)
 
     def serialize_schedule(self):
         serialized_schedule = {day: [slot.serialize() for slot in slots]
@@ -133,302 +146,71 @@ class StandardUser:
 
         for timesheet in self._timesheets:
             serialized_timesheets.append({
-                'pay_period': timesheet['pay_period'],
+                'pay_period': {
+                    'start': timesheet['pay_period'].get_start_date().strftime('%m/%d/%y'),
+                    'is_approved': timesheet['pay_period'].is_approved
+                },
                 'timesheet': {date: [slot.serialize() for slot in slots] for date, slots in
                               timesheet['timesheet'].items()}
             })
 
-        return {
-            'username': self._username,
+        return json.dumps({
+            'username': self.username,
             'password': self._password,
-            'role': self._role,
-            'organization': self._organization,
+            'organization': self.organization,
             'default_schedule': serialized_schedule,
             'timesheets': serialized_timesheets,
-            'email_address': self._email_address
-        }
+            'email_address': self.email_address,
+            'fname': self.fname,
+            'lname': self.lname,
+            'photo': self.photo,
+            'miscellaneous': self.miscellaneous,
+            'phone_number': self._phone_number
+        })
 
     @staticmethod
     def deserialize(user):
+        user = json.loads(user)
 
-        # if error in deserialize, check the line 67 in payperiod.py
-
-        deserialized_schedule = {day: [TimeSlot.deserialize(slot) for slot in slots]
-                                 for day, slots in user['default_schedule'].items()}
+        if user['default_schedule'] is None or user['default_schedule'] == {}:
+            deserialized_schedule = {}
+        else:
+            deserialized_schedule = {day: [TimeSlot.deserialize(slot) for slot in slots]
+                                     for day, slots in user['default_schedule'].items()}
 
         deserialized_timesheets = []
 
         for timesheet in user['timesheets']:
             deserialized_timesheets.append({
-                'pay_period': timesheet['pay_period'],
+                'pay_period': PayPeriod(timesheet['pay_period']['start']),
                 'timesheet': {date: [TimeSlot.deserialize(slot) for slot in slots] for date, slots in
                               timesheet['timesheet'].items()}
             })
 
-        return StandardUser(user['username'], user['password'], user['role'], user['organization'],
-                            user['email_address'],
-                            deserialized_schedule, deserialized_timesheets)
+        new_user = StandardUser(user['username'], user['password'], user['organization'],
+                                deserialized_schedule, deserialized_timesheets)
+
+        if 'email_address' in user:
+            new_user.email_address = user['email_address']
+        if 'fname' in user:
+            new_user.fname = user['fname']
+        if 'lname' in user:
+            new_user.lname = user['lname']
+        if 'photo' in user:
+            new_user.photo = user['photo']
+        if 'miscellaneous' in user:
+            new_user.miscellaneous = user['miscellaneous']
+        if 'phone_number' in user:
+            new_user._phone_number = user['phone_number']
+
+        for timesheet in deserialized_timesheets:
+            pay_period = timesheet['pay_period']
+            pay_period.is_approved = user['timesheets'][deserialized_timesheets.index(timesheet)]['pay_period'][
+                'is_approved']
+            pay_period._timesheet = timesheet['timesheet']
+
+        return new_user
 
 
-# DEFAULT_SCHEDULE = {
-#         'Sunday': [],
-#         'Monday': [TimeSlot('01/03/23', '09:00', '11:00'), TimeSlot('01/03/23', '13:00', '14:00')],
-#         'Tuesday': [TimeSlot('01/04/23', '10:00', '12:00'), TimeSlot('01/04/23', '14:00', '15:00')],
-#         'Wednesday': [TimeSlot('01/05/23', '10:50', '11:50'), TimeSlot('01/05/23', '15:00', '16:00')],
-#         'Thursday': [TimeSlot('01/06/23', '09:40', '12:40'), TimeSlot('01/06/23', '16:00', '17:00')],
-#         'Friday': [TimeSlot('01/07/23', '09:30', '10:30'), TimeSlot('01/07/23', '17:00', '18:00')],
-#         'Saturday': []
-#     }
+# new_user = StandardUser('manan', 'password', 'organization')
 #
-# DEFAULT_SCHEDULE_2 = {
-#         'Sunday': [],
-#         'Monday': [TimeSlot('01/03/23', '09:00', '11:00'), TimeSlot('01/03/23', '13:00', '14:00')],
-#         'Tuesday': [TimeSlot('01/04/23', '10:00', '12:00'), TimeSlot('01/04/23', '14:00', '15:00')],
-#         'Wednesday': [TimeSlot('01/05/23', '10:50', '11:50'), TimeSlot('01/05/23', '15:00', '16:00')],
-#         'Thursday': [TimeSlot('01/06/23', '09:40', '12:40'), TimeSlot('01/06/23', '16:00', '17:00')],
-#         'Friday': [TimeSlot('01/07/23', '09:30', '10:30'), TimeSlot('01/07/23', '17:00', '18:00')],
-#         'Saturday': []
-#     }
-#
-# user_1 = StandardUser('vyasmana', hashlib.sha256('password'.encode()).hexdigest(), 'employee', 'company', 'vyasmana@msu.edu', DEFAULT_SCHEDULE)
-#
-# user_2 = StandardUser('plattem', hashlib.sha256('password'.encode()).hexdigest(), 'employee', 'company', 'plattem@msu.edu', DEFAULT_SCHEDULE_2)
-#
-# user_2.submit_default_schedule(PayPeriod('01/01/23'))
-#
-# print(user_1)
-# print(user_2)
-
-
-# username, password, role, organization, email_address, default_schedule=None, timesheets=[]
-#
-# #
-# user = StandardUser('vyasmana', hashlib.sha256('Manan'.encode()).hexdigest(), 'user', 'MSU', 'vyasmana@msu.edu',
-#                     DEFAULT_SCHEDULE)
-#
-# pay_period = PayPeriod('01/01/23')
-#
-# user.submit_default_schedule(pay_period)
-#
-# second_pay_period = PayPeriod('01/15/23')
-# custom_timeslots = [
-#     TimeSlot('01/16/23', '10:00', '15:00'),
-#     TimeSlot('01/17/23', '10:00', '15:00'),
-#     TimeSlot('01/18/23', '10:00', '15:00'),
-# ]
-# user.submit_timesheet(second_pay_period, custom_timeslots)
-#
-# second_pay_period.is_approved = 'approved'
-#
-# for i in user._timesheets:
-#     # check if payperiod is pending
-#     if i['pay_period'].is_approved == 'pending':
-#         print(i['pay_period'].get_start_date())
-#         print("\n\n\n")
-# #
-# print(user._timesheets[-1]['pay_period'].get_total_hours())
-
-
-
-#
-# print(user._timesheets)
-#
-
-#
-#
-#
-# custom_timeslots = [
-#     TimeSlot('01/16/23', '10:00', '15:00'),
-#     TimeSlot('01/17/23', '10:00', '15:00'),
-#     TimeSlot('01/18/23', '10:00', '15:00'),
-# ]
-# second_pay_period = PayPeriod('01/15/23')
-#
-# user.submit_timesheet(second_pay_period, custom_timeslots)
-#
-# third_pay_period = PayPeriod('01/29/23')
-# custom_timeslots = [
-#     TimeSlot('01/30/23', '10:00', '15:00'),
-#     TimeSlot('01/31/23', '10:00', '15:00'),
-#     TimeSlot('02/01/23', '10:00', '15:00'),
-# ]
-# user.submit_timesheet(third_pay_period, custom_timeslots)
-#
-# pay_period = PayPeriod('02/11/24')
-# user.submit_default_schedule(pay_period)
-#
-# #
-# # timesheets = user.get_timesheets()
-# # for i in timesheets:
-# #     print(i['pay_period'])
-# #     print(i['timesheet'])
-#
-#
-# time_sheets = user._timesheets
-#
-# # print(time_sheets)
-#
-# last_five_timeshetes = []
-# for i in range(5):
-#     if i == 5:
-#         break
-#     try:
-#         last_five_timeshetes.append(time_sheets[i]['pay_period'])
-#     except:
-#         last_five_timeshetes.append("")
-#
-# last_five_pay_periods = []
-# for i in range(5):
-#     if i == 5:
-#         break
-#     try:
-#         last_five_pay_periods.append(last_five_timeshetes[i].get_start_date().strftime('%d %b'))
-#     except:
-#         last_five_pay_periods.append("")
-#
-#
-# hours = []
-# for i in range(5):
-#     if i == 5:
-#         break
-#     try:
-#         hours.append(last_five_timeshetes[i].get_total_hours())
-#     except:
-#         print("error")
-#         hours.append(0)
-#
-# status = []
-# for i in range(5):
-#     if i == 5:
-#         break
-#     try:
-#         status.append(last_five_timeshetes[i].is_approved)
-#     except:
-#         status.append('pending')
-#
-# data = {
-#     'Date': last_five_pay_periods,
-#     'Hours': hours,
-#     'Status': status
-# }
-#
-# print(data)
-#
-# df = pd.DataFrame(data)
-#
-# def plot_timesheet_bar_chart(df):
-#     plt.style.use('dark_background')
-#     status_colors = {'approved': 'green', 'rejected': 'red', 'pending': 'blue'}
-#     colors = df['Status'].map(status_colors)
-#     fig, ax = plt.subplots()
-#     bars = ax.bar(df['Date'], df['Hours'], color=colors, width=0.2)
-#
-#     ax.set_facecolor('#0f1116')
-#     fig.patch.set_facecolor('#0f1116')
-#     ax.set_xlabel('Date', fontsize=12, color='white')
-#     ax.set_ylabel('Hours', fontsize=12, color='white')
-#     ax.tick_params(axis='x', colors='white')
-#     ax.tick_params(axis='y', colors='white')
-#     ax.set_ylim(0, 40)
-#     ax.set_title('Timesheets', fontsize=14, color='white')
-#
-#     ax.xaxis.labelpad = 15
-#     ax.yaxis.labelpad = 15
-#
-#     return fig
-#
-# # plot the bar chart
-# fig = plot_timesheet_bar_chart(df)
-# plt.show()
-
-
-#
-# default_schedule = {
-#         'Sunday': [],
-#         'Monday': [TimeSlot('01/03/23', '09:00', '12:00'), TimeSlot('01/03/23', '12:00', '17:00')],
-#         'Tuesday': [TimeSlot('01/04/23', '01:00', '12:00'), TimeSlot('01/04/23', '14:00', '17:00')],
-#         'Wednesday': [TimeSlot('01/05/23', '09:00', '12:00'), TimeSlot('01/05/23', '13:00', '17:00')],
-#         'Thursday': [TimeSlot('01/06/23', '09:00', '12:00'), TimeSlot('01/06/23', '15:00', '17:00')],
-#         'Friday': [TimeSlot('01/07/23', '09:00', '12:00'), TimeSlot('01/07/23', '16:00', '17:00')],
-#         'Saturday': []
-#     }
-
-# user = StandardUser('johndoe', 'password123', 'employee', 'company','vyasmana@msu.edu', default_schedule)
-# # print(user)
-# print('------------------')
-# # print(user.serialize())
-#
-# first_pay_period = PayPeriod('01/01/23')
-#
-# user.submit_default_schedule(first_pay_period)
-#
-# # print(user)
-# #
-# # print(user.timesheets)
-# print(user.get_latest_timesheet_status())
-
-# print(first_pay_period.is_approved)
-
-
-# print(user)
-# print('------------------')
-# print(user.serialize())
-# second_pay_period = PayPeriod('01/15/23')
-# custom_timeslots = [
-#     TimeSlot('01/16/23', '10:00', '15:00'),
-#     TimeSlot('01/17/23', '10:00', '15:00'),
-#     TimeSlot('01/18/23', '10:00', '15:00'),
-# ]
-# user.submit_timesheet(second_pay_period, custom_timeslots)
-# print(user)
-# print('------------------')
-# print(user.serialize())
-# print('------------------')
-# print(StandardUser.deserialize(user.serialize()))
-#
-# print(user)
-#
-# new_user = user.serialize()
-# # for i, j in new_user.items():
-# #     print(i, "::: ", j)
-# # print(type(new_user))
-# print(StandardUser.deserialize(new_user))
-#
-# # all_timeshet = user.get_timesheets()
-# #
-# # for i in all_timeshet:
-# #     print(i['pay_period'])
-# #     print(i['timesheet'])
-#
-
-
-# default_schedule = {
-#         'Sunday': [],
-#         'Monday': [TimeSlot('01/03/23', '09:00', '12:00'), TimeSlot('01/03/23', '13:00', '17:00')],
-#         'Tuesday': [TimeSlot('01/04/23', '09:00', '12:00'), TimeSlot('01/04/23', '13:00', '17:00')],
-#         'Wednesday': [TimeSlot('01/05/23', '09:00', '12:00'), TimeSlot('01/05/23', '13:00', '17:00')],
-#         'Thursday': [TimeSlot('01/06/23', '09:00', '12:00'), TimeSlot('01/06/23', '13:00', '17:00')],
-#         'Friday': [TimeSlot('01/07/23', '09:00', '12:00'), TimeSlot('01/07/23', '13:00', '17:00')],
-#         'Saturday': []
-#     }
-# user = StandardUser('johndoe', 'password123', 'employee', 'company', default_schedule)
-#
-# zz = user.serialize_schedule()
-#
-# print(zz)
-# first_pay_period = PayPeriod('01/01/23')
-# user.submit_default_schedule(first_pay_period)
-#
-#
-# second_pay_period = PayPeriod('01/15/23')
-# custom_timeslots = [
-#     TimeSlot('01/16/23', '10:00', '15:00'),
-#     TimeSlot('01/17/23', '10:00', '15:00'),
-#     TimeSlot('01/17/23', '15:00', '16:00'),
-#     TimeSlot('01/18/23', '10:00', '15:00'),
-# ]
-# user.submit_timesheet(second_pay_period, custom_timeslots)
-
-# for i in user.get_timesheets():
-#     print(i)
-#     # print("\n\n\n")

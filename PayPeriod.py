@@ -64,12 +64,24 @@ class PayPeriod:
     def approve(self):
         self.is_approved = "approved"
 
+    def get_total_hours_by_date(self, date):
+        total_hours = 0
+        if date in self._timesheet:
+            for timeslot in self._timesheet[date]:
+                total_hours += timeslot.duration()
+        return total_hours
+
     def reject(self):
         self.is_approved = "rejected"
 
     def __repr__(self):
         # start, end, timesheet
         return f"{self._start.strftime('%m/%d/%y'), self._end.strftime('%m/%d/%y'), self._timesheet}"
+
+    def __eq__(self, other):
+        if not isinstance(other, PayPeriod):
+            return NotImplemented
+        return (self._start, self._end, self._timesheet) == (other._start, other._end, other._timesheet)
 
     def get_pay_period_and_timesheet(self):
         return {'pay_period': self, 'timesheet': self._timesheet}

@@ -1,7 +1,5 @@
-psycopg2-binary
-numpy~=1.26.2
 streamlit
 python-dotenv
 pandas
-numpy
 extra-streamlit-components
+mysql-connector-python
